@@ -1,0 +1,38 @@
+name: track-upstream
+on:
+  schedule:
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: merge latest upstream release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          git remote add upstream https://github.com/Ashinch/ReadYou.git || true
+          git fetch upstream --tags --quiet
+          LATEST=$(gh api repos/Ashinch/ReadYou/releases/latest --jq .tag_name)
+          echo "latest upstream release: $LATEST"
+          if git merge-base --is-ancestor "$LATEST" HEAD; then
+            echo "already up to date"
+            echo "CHANGED=false" >> "$GITHUB_ENV"
+          else
+            git -c user.name=updater -c user.email=updater@localhost merge "$LATEST" -m "merge upstream $LATEST"
+            echo "CHANGED=true" >> "$GITHUB_ENV"
+          fi
+      - name: push merge
+        if: env.CHANGED == 'true'
+        run: git push origin HEAD:main
+      - name: report conflict
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create --title "upstream merge needs manual resolution" \
+            --body "Merging the latest Ashinch/ReadYou release failed (likely a conflict with the feed-icon patch). Resolve by hand, then close this issue."

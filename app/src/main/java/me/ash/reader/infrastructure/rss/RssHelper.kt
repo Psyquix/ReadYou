@@ -79,9 +79,13 @@ constructor(
             }
 
             feed.also {
+                // Prefer the feed-declared <image> icon; fall back to site scraping.
+                val declared = (it.icon?.url ?: it.icon?.link)
+                    ?.takeIf { u -> u.startsWith("http") }
+                val resolved = declared ?: queryRssIconLink(resolvedFeedLink)
                 it.icon = SyndImageImpl()
-                it.icon.link = queryRssIconLink(resolvedFeedLink)
-                it.icon.url = it.icon.link
+                it.icon.link = resolved
+                it.icon.url = resolved
             }
 
             SearchFeedResult(feed = feed, feedLink = resolvedFeedLink)
@@ -288,6 +292,20 @@ constructor(
         val domain = feedLink.extractDomain()
         return iconFinder.findBestIcon(domain ?: feedLink).also {
             Log.i("RLog", "queryRssIconByLink: get $it from $domain")
+        }
+    }
+
+    /** Feed-declared <image> icon (absolute URL), or null. */
+    suspend fun queryFeedDeclaredIcon(feedLink: String?): String? {
+        if (feedLink.isNullOrEmpty()) return null
+        return try {
+            val res = response(okHttpClient, feedLink)
+            if (!res.commonIsSuccessful) return null
+            val feed = parseFeed(res.body.bytes(), toHttpContentType(res.header("Content-Type")))
+            (feed.image?.url ?: feed.image?.link)?.takeIf { it.startsWith("http") }
+        } catch (e: Exception) {
+            Log.w("RLog", "queryFeedDeclaredIcon: $e")
+            null
         }
     }
 

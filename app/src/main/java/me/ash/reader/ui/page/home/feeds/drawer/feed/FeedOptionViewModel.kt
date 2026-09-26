@@ -214,7 +214,8 @@ constructor(
     fun reloadIcon() {
         _feedOptionUiState.value.feed?.let { feed ->
             viewModelScope.launch(ioDispatcher) {
-                val icon = rssHelper.queryRssIconLink(feed.url) ?: return@launch
+                val icon = rssHelper.queryFeedDeclaredIcon(feed.url)
+                    ?: rssHelper.queryRssIconLink(feed.url) ?: return@launch
                 feedDao.update(feed.copy(icon = icon))
                 fetchFeed(feed.id)
             }
