@@ -1,0 +1,40 @@
+name: release
+# Publishes a fork Release with the APK whenever an upstream merge builds green.
+on:
+  workflow_run:
+    workflows: ["Build Commit"]
+    types: [completed]
+permissions:
+  contents: write
+jobs:
+  release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && contains(github.event.workflow_run.head_commit.message, 'merge upstream') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: download apk artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          gh run download "${{ github.event.workflow_run.id }}" \
+            -R "${{ github.repository }}" \
+            -p "ReadYou-GitHub-Build-*" -D apk
+          find apk -name "*.apk"
+      - name: create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          VER=$(grep -oE 'versionName *= *"[^"]+"' app/build.gradle.kts | grep -oE "[0-9.]+" | head -1)
+          TAG="v${VER}+feedicon.${{ github.run_number }}"
+          if gh release view "$TAG" -R "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "release $TAG exists, skipping"
+            exit 0
+          fi
+          gh release create "$TAG" -R "${{ github.repository }}" \
+            --title "$TAG" \
+            --notes "Automated build of upstream merge (${{ github.event.workflow_run.head_sha }}), with feed-icon patch." \
+            apk/**/*.apk
