@@ -79,10 +79,14 @@ constructor(
             }
 
             feed.also {
-                // Prefer the feed-declared <image> icon; fall back to site scraping.
+                // Prefer the feed-declared <image> icon, then the site homepage
+                // (Twine-style), then the legacy feed-host lookup.
                 val declared = (it.icon?.url ?: it.icon?.link)
                     ?.takeIf { u -> u.startsWith("http") }
-                val resolved = declared ?: queryRssIconLink(resolvedFeedLink)
+                val site = it.link?.takeIf { u -> u.startsWith("http") }
+                val resolved = declared
+                    ?: site?.let { BestIconFinder(okHttpClient).findBestIcon(it) }
+                    ?: queryRssIconLink(resolvedFeedLink)
                 it.icon = SyndImageImpl()
                 it.icon.link = resolved
                 it.icon.url = resolved
@@ -295,18 +299,27 @@ constructor(
         }
     }
 
-    /** Feed-declared <image> icon (absolute URL), or null. */
-    suspend fun queryFeedDeclaredIcon(feedLink: String?): String? {
+    /**
+     * Unified icon resolution, Twine-style: feed-declared <image> first,
+     * then the site homepage's icons, then the legacy feed-host lookup.
+     * This is the only entry point new code should use.
+     */
+    suspend fun queryRssIcon(feedLink: String?): String? {
         if (feedLink.isNullOrEmpty()) return null
-        return try {
+        try {
             val res = response(okHttpClient, feedLink)
-            if (!res.commonIsSuccessful) return null
-            val feed = parseFeed(res.body.bytes(), toHttpContentType(res.header("Content-Type")))
-            (feed.image?.url ?: feed.image?.link)?.takeIf { it.startsWith("http") }
+            if (res.commonIsSuccessful) {
+                val feed = parseFeed(res.body.bytes(), toHttpContentType(res.header("Content-Type")))
+                (feed.image?.url ?: feed.image?.link)
+                    ?.takeIf { it.startsWith("http") }?.let { return it }
+                feed.link?.takeIf { it.startsWith("http") }?.let { site ->
+                    BestIconFinder(okHttpClient).findBestIcon(site)?.let { return it }
+                }
+            }
         } catch (e: Exception) {
-            Log.w("RLog", "queryFeedDeclaredIcon: $e")
-            null
+            Log.w("RLog", "queryRssIcon: $e")
         }
+        return queryRssIconLink(feedLink)
     }
 
     suspend fun saveRssIcon(feedDao: FeedDao, feed: Feed, iconLink: String) {

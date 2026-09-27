@@ -117,7 +117,7 @@ constructor(
     private suspend fun syncFeed(feed: Feed, preDate: Date = Date()): FeedWithArticle {
         val articles = rssHelper.queryRssXml(feed, "", preDate)
         if (feed.icon == null) {
-            val iconLink = rssHelper.queryRssIconLink(feed.url)
+            val iconLink = rssHelper.queryRssIcon(feed.url)
             if (iconLink != null) {
                 rssHelper.saveRssIcon(feedDao, feed, iconLink)
             }
