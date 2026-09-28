@@ -47,6 +47,9 @@ constructor(
 
     val groupsFlow = MutableStateFlow<List<Group>>(emptyList())
 
+    /** Full parsed feed, kept out of compose state (see FeedPreview). */
+    private var fullFeed: SyndFeed? = null
+
     init {
         viewModelScope.launch {
             accountService.currentAccountFlow.collectLatest {
@@ -161,9 +164,14 @@ constructor(
                                 return@onSuccess
                             }
                             val groups = groupsFlow.value
+                            fullFeed = it.feed
                             _subscribeState.value =
                                 SubscribeState.Configure(
-                                    searchedFeed = it.feed,
+                                    preview = FeedPreview(
+                                        title = it.feed.title,
+                                        iconUrl = it.feed.icon?.url ?: it.feed.icon?.link,
+                                        entryCount = it.feed.entries.size,
+                                    ),
                                     feedLink = it.feedLink,
                                     groups = groups,
                                     selectedGroupId = firstGroupId,
@@ -192,7 +200,9 @@ constructor(
         if (state !is SubscribeState.Configure) return
 
         applicationScope.launch {
-            val searchedFeed = state.searchedFeed
+            val searchedFeed = fullFeed ?: return@launch
+            searchedFeed.title =
+                _subscribeUiState.value.newName.ifBlank { state.preview.title }
             rssService
                 .get()
                 .subscribe(
@@ -227,6 +237,7 @@ constructor(
 
     fun hideDrawer() {
         cancelSearch()
+        fullFeed = null
         _subscribeState.value = SubscribeState.Hidden
     }
 
@@ -241,7 +252,7 @@ constructor(
     fun showRenameDialog() {
         _subscribeUiState.update { it.copy(renameDialogVisible = true) }
         _subscribeUiState.update { uiState ->
-            (_subscribeState.value as? SubscribeState.Configure)?.searchedFeed?.title?.let { title
+            (_subscribeState.value as? SubscribeState.Configure)?.preview?.title?.let { title
                 ->
                 uiState.copy(newName = title)
             } ?: uiState
@@ -261,8 +272,8 @@ constructor(
             when (state) {
                 is SubscribeState.Configure ->
                     state.copy(
-                        searchedFeed =
-                            state.searchedFeed.apply { title = _subscribeUiState.value.newName }
+                        preview =
+                            state.preview.copy(title = _subscribeUiState.value.newName)
                     )
 
                 else -> state
@@ -297,7 +308,7 @@ sealed interface SubscribeState {
         SubscribeState, Input
 
     data class Configure(
-        val searchedFeed: SyndFeed,
+        val preview: FeedPreview,
         val feedLink: String,
         val groups: List<Group> = emptyList(),
         val notification: Boolean = false,
@@ -306,3 +317,11 @@ sealed interface SubscribeState {
         val selectedGroupId: String,
     ) : SubscribeState, Visible
 }
+
+/** Lightweight subscribe preview. Never put a SyndFeed in compose state:
+ * hashing a large feed (ROME toString) OOMs low-memory devices. */
+data class FeedPreview(
+    val title: String,
+    val iconUrl: String?,
+    val entryCount: Int,
+)

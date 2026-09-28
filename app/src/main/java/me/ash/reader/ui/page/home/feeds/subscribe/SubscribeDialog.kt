@@ -79,7 +79,7 @@ fun SubscribeDialog(
             },
             icon = {
                 val iconUrl = when (subscribeState) {
-                    is SubscribeState.Configure -> subscribeState.searchedFeed.icon.url
+                    is SubscribeState.Configure -> subscribeState.preview.iconUrl
                     else -> null
                 }
                 FeedIcon(
@@ -96,7 +96,7 @@ fun SubscribeDialog(
                         }
                     },
                     text = when (subscribeState) {
-                        is SubscribeState.Configure -> subscribeState.searchedFeed.title
+                        is SubscribeState.Configure -> subscribeState.preview.title
                         is SubscribeState.Fetching -> stringResource(R.string.searching)
                         is SubscribeState.Idle -> stringResource(R.string.subscribe)
                     },
