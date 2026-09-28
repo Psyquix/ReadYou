@@ -160,3 +160,9 @@ Thanks to **Weblate** for providing free hosting of open source projects for **R
 ## License
 
 GNU GPL v3.0 © [Read You](https://github.com/ReadYouApp/ReadYou/blob/main/LICENSE)
+
+## This fork
+
+Psyquix's fork with feed-icon fixes and large-feed OOM guard, auto-rebuilt
+on upstream releases (APKs under [Releases](../../releases)). Details in
+[FORK.md](FORK.md).
