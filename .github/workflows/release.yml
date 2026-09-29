@@ -29,12 +29,12 @@ jobs:
         run: |
           set -e
           VER=$(grep -oE 'versionName *= *"[^"]+"' app/build.gradle.kts | grep -oE "[0-9.]+" | head -1)
-          TAG="v${VER}+feedicon.${{ github.run_number }}"
+          TAG="v${VER}+psyquix.${{ github.run_number }}"
           if gh release view "$TAG" -R "${{ github.repository }}" >/dev/null 2>&1; then
             echo "release $TAG exists, skipping"
             exit 0
           fi
           gh release create "$TAG" -R "${{ github.repository }}" \
             --title "$TAG" \
-            --notes "Automated build of upstream merge (${{ github.event.workflow_run.head_sha }}), with feed-icon patch." \
+            --notes "Automated build of upstream merge (${{ github.event.workflow_run.head_sha }}). Includes the fork patches: feed-icon resolution, large-feed OOM guard, mark above/below as unread. See FORK.md." \
             apk/**/*.apk
