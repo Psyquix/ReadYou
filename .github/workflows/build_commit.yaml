@@ -13,6 +13,40 @@ jobs:
 
             - uses: gradle/actions/setup-gradle@v4
             - run: ./gradlew testGithubReleaseUnitTest
+
+            # A passing test task does not prove any test ran: an undiscovered test
+            # class still reports success. Assert the tests actually executed, so a
+            # broken test setup can never pass this gate silently.
+            - name: verify unit tests actually ran
+              run: |
+                set -uo pipefail
+                RESULTS=app/build/test-results/testGithubReleaseUnitTest
+                if [ ! -d "$RESULTS" ]; then
+                  echo "::error::no test results at $RESULTS — test task did not run"
+                  exit 1
+                fi
+                FILES=$(find "$RESULTS" -name '*.xml' | wc -l)
+                if [ "$FILES" -eq 0 ]; then
+                  echo "::error::no JUnit XML produced — tests were not discovered"
+                  exit 1
+                fi
+                TOTAL=$(grep -ho 'tests="[0-9]*"' "$RESULTS"/*.xml | grep -oE '[0-9]+' | awk '{s+=$1} END {print s+0}')
+                FAILURES=$(grep -ho 'failures="[0-9]*"' "$RESULTS"/*.xml | grep -oE '[0-9]+' | awk '{s+=$1} END {print s+0}')
+                ERRORS=$(grep -ho 'errors="[0-9]*"' "$RESULTS"/*.xml | grep -oE '[0-9]+' | awk '{s+=$1} END {print s+0}')
+                echo "unit tests: files=$FILES tests=$TOTAL failures=$FAILURES errors=$ERRORS"
+                if [ "$TOTAL" -eq 0 ]; then
+                  echo "::error::test task succeeded but executed zero tests"
+                  exit 1
+                fi
+
+            - uses: actions/upload-artifact@v5
+              if: always()
+              with:
+                  name: Unit-Test-Report
+                  path: |
+                      app/build/reports/tests/testGithubReleaseUnitTest/
+                      app/build/test-results/testGithubReleaseUnitTest/
+
             - run: ./gradlew assembleGithubRelease
 
             - uses: actions/upload-artifact@v5
