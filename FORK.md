@@ -42,8 +42,19 @@ merge boring.
   `Ashinch/ReadYou` release into `main` and pushes (which triggers the stock
   `Build Commit` APK build). Opens an issue on merge conflict — resolve by
   hand, keeping both sides where sensible.
-- `release` (on green `Build Commit` runs whose head commit message contains
-  `merge upstream`): publishes `vX.Y.Z+psyquix.N` with the APK attached.
+- `release` publishes `vX.Y.Z+psyquix.N` with the APK attached, two ways:
+  - **automatically** — on green `Build Commit` runs whose head commit contains
+    `merge upstream`
+  - **manually** — `workflow_dispatch` with a `source_run` input (a Build Commit
+    run id). Tags as `vX.Y.Z+psyquix.manual.N` and the notes lead with
+    "Manual release. Not an upstream merge." A run that did not conclude
+    `success` is refused, so a red build cannot be published by hand. The
+    workflow checks out the source run's commit, so `versionName` is read from
+    the tree the APK was built from.
+
+  ```sh
+  gh workflow run release.yml -f source_run=<Build Commit run id>
+  ```
 - `build_commit.yaml` (upstream file, lightly edited): pinned to
   `ubuntu-24.04` and Node-24-ready actions (`checkout@v4`, `setup-java@v4`,
   `gradle/actions/setup-gradle@v4`, `upload-artifact@v5`), plus a
@@ -59,7 +70,8 @@ Committing a patch: keep `merge upstream` out of the commit message, or
 
 ## Installing
 
-Releases carry signed-per-fork APKs (`v...+psyquix.N`). Migrating from stock
+Releases carry signed-per-fork APKs (`v...+psyquix.N`, or `v...+psyquix.manual.N`
+for a manual build). Migrating from stock
 requires uninstall (different signature): export OPML first, then import it
 in the fork. Updates within the fork install over each other, no data loss.
 

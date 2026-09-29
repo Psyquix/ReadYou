@@ -1,40 +1,112 @@
 name: release
-# Publishes a fork Release with the APK whenever an upstream merge builds green.
+# Publishes a fork Release with the APK.
+#  - automatically, whenever an upstream merge builds green
+#  - manually, via workflow_dispatch, from a chosen successful Build Commit run
 on:
   workflow_run:
     workflows: ["Build Commit"]
     types: [completed]
+  workflow_dispatch:
+    inputs:
+      source_run:
+        description: "Build Commit run id to take the APK from (a successful run)"
+        required: true
+        type: string
 permissions:
   contents: write
 jobs:
   release:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && contains(github.event.workflow_run.head_commit.message, 'merge upstream') }}
+    # Automatic path: only upstream merges. Manual path: operator's choice, but the
+    # chosen run must have succeeded, so a red build can never be published.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       contains(github.event.workflow_run.head_commit.message, 'merge upstream'))
     runs-on: ubuntu-latest
     steps:
+      # Resolve first, then check out exactly that commit, so versionName is read
+      # from the tree the APK was actually built from.
+      - name: resolve source run
+        id: source
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MANUAL: ${{ github.event_name == 'workflow_dispatch' }}
+          MANUAL_RUN: ${{ inputs.source_run }}
+          AUTO_RUN: ${{ github.event.workflow_run.id }}
+          AUTO_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          if [ "$MANUAL" = "true" ]; then
+            RUN="$MANUAL_RUN"
+            CONCLUSION=$(gh run view "$RUN" -R "${{ github.repository }}" --json conclusion --jq .conclusion)
+            if [ "$CONCLUSION" != "success" ]; then
+              echo "::error::run $RUN concluded '$CONCLUSION'; refusing to publish a failed build"
+              exit 1
+            fi
+            SHA=$(gh run view "$RUN" -R "${{ github.repository }}" --json headSha --jq .headSha)
+            KIND=manual
+          else
+            RUN="$AUTO_RUN"
+            SHA="$AUTO_SHA"
+            KIND=automated
+          fi
+          echo "run=$RUN" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "kind=$KIND" >> "$GITHUB_OUTPUT"
+          echo "source: $KIND run $RUN ($SHA)"
+
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ steps.source.outputs.sha }}
+
       - name: download apk artifact
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -e
-          gh run download "${{ github.event.workflow_run.id }}" \
+          set -euo pipefail
+          gh run download "${{ steps.source.outputs.run }}" \
             -R "${{ github.repository }}" \
             -p "ReadYou-GitHub-Build-*" -D apk
           find apk -name "*.apk"
+
       - name: create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KIND: ${{ steps.source.outputs.kind }}
+          SHA: ${{ steps.source.outputs.sha }}
         run: |
-          set -e
+          set -euo pipefail
           VER=$(grep -oE 'versionName *= *"[^"]+"' app/build.gradle.kts | grep -oE "[0-9.]+" | head -1)
-          TAG="v${VER}+psyquix.${{ github.run_number }}"
+          if [ "$KIND" = "manual" ]; then
+            TAG="v${VER}+psyquix.manual.${{ github.run_number }}"
+            NOTES="**Manual release.** Not an upstream merge.
+
+            Commit: $SHA
+            Build run: ${{ steps.source.outputs.run }}
+
+            Fork patches in this build:
+            - Feed-icon resolution: declared \`<image>\`, then site homepage, then feed host
+            - Large-feed OOM guard: parsed SyndFeed kept out of compose state
+            - Mark above/below as unread in the article long-press menu
+
+            Unit tests run before the APK is built and gate this release.
+            Runtime behaviour is unverified; see FORK.md."
+          else
+            TAG="v${VER}+psyquix.${{ github.run_number }}"
+            NOTES="Automated build of upstream merge ($SHA).
+
+            Fork patches in this build:
+            - Feed-icon resolution: declared \`<image>\`, then site homepage, then feed host
+            - Large-feed OOM guard: parsed SyndFeed kept out of compose state
+            - Mark above/below as unread in the article long-press menu
+
+            Unit tests run before the APK is built and gate this release. See FORK.md."
+          fi
           if gh release view "$TAG" -R "${{ github.repository }}" >/dev/null 2>&1; then
             echo "release $TAG exists, skipping"
             exit 0
           fi
           gh release create "$TAG" -R "${{ github.repository }}" \
             --title "$TAG" \
-            --notes "Automated build of upstream merge (${{ github.event.workflow_run.head_sha }}). Includes the fork patches: feed-icon resolution, large-feed OOM guard, mark above/below as unread. See FORK.md." \
+            --notes "$NOTES" \
             apk/**/*.apk
