@@ -163,6 +163,6 @@ GNU GPL v3.0 © [Read You](https://github.com/ReadYouApp/ReadYou/blob/main/LICEN
 
 ## This fork
 
-Psyquix's fork with feed-icon fixes and large-feed OOM guard, auto-rebuilt
-on upstream releases (APKs under [Releases](../../releases)). Details in
-[FORK.md](FORK.md).
+Psyquix's fork with feed-icon fixes, a large-feed OOM guard, and
+mark-above/below-as-unread, auto-rebuilt on upstream releases (APKs under
+[Releases](../../releases)). Details in [FORK.md](FORK.md).
