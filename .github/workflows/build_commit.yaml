@@ -12,6 +12,7 @@ jobs:
                   java-version: 17
 
             - uses: gradle/actions/setup-gradle@v4
+            - run: ./gradlew testGithubReleaseUnitTest
             - run: ./gradlew assembleGithubRelease
 
             - uses: actions/upload-artifact@v5

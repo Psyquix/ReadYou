@@ -35,4 +35,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh issue create --title "upstream merge needs manual resolution" \
-            --body "Merging the latest Ashinch/ReadYou release failed (likely a conflict with the feed-icon patch). Resolve by hand, then close this issue."
+            --body "Merging the latest Ashinch/ReadYou release failed. This is usually a conflict between an upstream change and one of the fork patches (feed-icon resolution, subscribe OOM guard, mark above/below as unread). See FORK.md. Resolve by hand, keeping both sides where sensible, then close this issue."
