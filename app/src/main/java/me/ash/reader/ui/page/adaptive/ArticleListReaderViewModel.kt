@@ -199,7 +199,7 @@ constructor(
         viewModelScope.launch(ioDispatcher) {
             val items =
                 selectPositionalArticles(
-                    items = articleListUseCase.itemSnapshotList,
+                    items = articleListUseCase.itemSnapshotList.items,
                     date = date,
                     isBefore = isBefore,
                     targetUnread = true,
