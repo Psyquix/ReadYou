@@ -213,6 +213,26 @@ fun FlowPage(
             }
         }
 
+    val onMarkAboveAsUnread: ((ArticleWithFeed) -> Unit)? =
+        remember(sortByEarliest) {
+            {
+                viewModel.markAsUnreadFromListByDate(
+                    date = it.article.date,
+                    isBefore = sortByEarliest,
+                )
+            }
+        }
+
+    val onMarkBelowAsUnread: ((ArticleWithFeed) -> Unit)? =
+        remember(sortByEarliest) {
+            {
+                viewModel.markAsUnreadFromListByDate(
+                    date = it.article.date,
+                    isBefore = !sortByEarliest,
+                )
+            }
+        }
+
     val onShare: ((ArticleWithFeed) -> Unit)? = remember {
         { articleWithFeed ->
             with(articleWithFeed.article) { sharedContent.share(context, title, link) }
@@ -691,6 +711,8 @@ fun FlowPage(
                                 onToggleRead = onToggleRead,
                                 onMarkAboveAsRead = onMarkAboveAsRead,
                                 onMarkBelowAsRead = onMarkBelowAsRead,
+                                onMarkAboveAsUnread = onMarkAboveAsUnread,
+                                onMarkBelowAsUnread = onMarkBelowAsUnread,
                                 onShare = onShare,
                             )
                             item {

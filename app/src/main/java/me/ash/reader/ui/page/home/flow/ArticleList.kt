@@ -28,8 +28,25 @@ fun LazyListScope.ArticleList(
     onToggleRead: (ArticleWithFeed) -> Unit = {},
     onMarkAboveAsRead: ((ArticleWithFeed) -> Unit)? = null,
     onMarkBelowAsRead: ((ArticleWithFeed) -> Unit)? = null,
+    onMarkAboveAsUnread: ((ArticleWithFeed) -> Unit)? = null,
+    onMarkBelowAsUnread: ((ArticleWithFeed) -> Unit)? = null,
     onShare: ((ArticleWithFeed) -> Unit)? = null,
 ) {
+    // Fork patch 3: "mark above/below as unread" is only worth offering when there is
+    // actually something to flip, which needs just the first and last index holding a
+    // currently-read article. A single O(n) pass over the loaded snapshot; peek() so
+    // this never forces a page load. Zero extra state, O(1) per item.
+    var firstReadIndex = -1
+    var lastReadIndex = -1
+    for (i in 0 until pagingItems.itemCount) {
+        val item = pagingItems.peek(i) as? ArticleFlowItem.Article ?: continue
+        val article = item.articleWithFeed.article
+        val isUnread = diffMap[article.id]?.isUnread ?: article.isUnread
+        if (!isUnread) {
+            if (firstReadIndex == -1) firstReadIndex = i
+            lastReadIndex = i
+        }
+    }
     // https://issuetracker.google.com/issues/193785330
     // FIXME: Using sticky header with paging-compose need to iterate through the entire list
     //  to figure out where to add sticky headers, which significantly impacts the performance
@@ -56,6 +73,10 @@ fun LazyListScope.ArticleList(
                             else onMarkAboveAsRead, // index == 0 -> ArticleFlowItem.Date
                         onMarkBelowAsRead =
                             if (index == pagingItems.itemCount - 1) null else onMarkBelowAsRead,
+                        onMarkAboveAsUnread =
+                            if (firstReadIndex in 0 until index) onMarkAboveAsUnread else null,
+                        onMarkBelowAsUnread =
+                            if (lastReadIndex > index) onMarkBelowAsUnread else null,
                         onShare = onShare,
                     )
                 }
@@ -90,6 +111,10 @@ fun LazyListScope.ArticleList(
                                 else onMarkAboveAsRead, // index == 0 -> ArticleFlowItem.Date
                             onMarkBelowAsRead =
                                 if (index == pagingItems.itemCount - 1) null else onMarkBelowAsRead,
+                            onMarkAboveAsUnread =
+                                if (firstReadIndex in 0 until index) onMarkAboveAsUnread else null,
+                            onMarkBelowAsUnread =
+                                if (lastReadIndex > index) onMarkBelowAsUnread else null,
                             onShare = onShare,
                         )
                     }

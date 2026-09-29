@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Circle
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.FiberManualRecord
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.rounded.ArrowDownward
@@ -319,6 +321,8 @@ fun SwipeableArticleItem(
     onToggleRead: (ArticleWithFeed) -> Unit = {},
     onMarkAboveAsRead: ((ArticleWithFeed) -> Unit)? = null,
     onMarkBelowAsRead: ((ArticleWithFeed) -> Unit)? = null,
+    onMarkAboveAsUnread: ((ArticleWithFeed) -> Unit)? = null,
+    onMarkBelowAsUnread: ((ArticleWithFeed) -> Unit)? = null,
     onShare: ((ArticleWithFeed) -> Unit)? = null,
 ) {
 
@@ -380,6 +384,8 @@ fun SwipeableArticleItem(
                             onToggleRead = onToggleRead,
                             onMarkAboveAsRead = onMarkAboveAsRead,
                             onMarkBelowAsRead = onMarkBelowAsRead,
+                            onMarkAboveAsUnread = onMarkAboveAsUnread,
+                            onMarkBelowAsUnread = onMarkBelowAsUnread,
                             onShare = onShare,
                         ) {
                             isMenuExpanded = false
@@ -570,6 +576,8 @@ fun ArticleItemMenuContent(
     onToggleRead: (ArticleWithFeed) -> Unit = {},
     onMarkAboveAsRead: ((ArticleWithFeed) -> Unit)? = null,
     onMarkBelowAsRead: ((ArticleWithFeed) -> Unit)? = null,
+    onMarkAboveAsUnread: ((ArticleWithFeed) -> Unit)? = null,
+    onMarkBelowAsUnread: ((ArticleWithFeed) -> Unit)? = null,
     onShare: ((ArticleWithFeed) -> Unit)? = null,
     onItemClick: (() -> Unit)? = null,
 ) {
@@ -644,6 +652,43 @@ fun ArticleItemMenuContent(
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Rounded.ArrowDownward,
+                    contentDescription = null,
+                    modifier = Modifier.size(iconSize),
+                )
+            },
+        )
+    }
+    if (onMarkAboveAsUnread != null || onMarkBelowAsUnread != null) {
+        HorizontalDivider()
+    }
+    // Filled arrows = "becomes read", outlined = "becomes unread", matching the
+    // filled/outlined idiom this menu already uses for its own read/unread toggle.
+    onMarkAboveAsUnread?.let {
+        DropdownMenuItem(
+            text = { Text(text = stringResource(id = R.string.mark_above_as_unread)) },
+            onClick = {
+                onMarkAboveAsUnread(articleWithFeed)
+                onItemClick?.invoke()
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Outlined.ArrowUpward,
+                    contentDescription = null,
+                    modifier = Modifier.size(iconSize),
+                )
+            },
+        )
+    }
+    onMarkBelowAsUnread?.let {
+        DropdownMenuItem(
+            text = { Text(text = stringResource(id = R.string.mark_below_as_unread)) },
+            onClick = {
+                onMarkBelowAsUnread(articleWithFeed)
+                onItemClick?.invoke()
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Outlined.ArrowDownward,
                     contentDescription = null,
                     modifier = Modifier.size(iconSize),
                 )

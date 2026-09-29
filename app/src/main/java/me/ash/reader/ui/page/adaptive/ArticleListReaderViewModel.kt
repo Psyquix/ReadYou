@@ -187,6 +187,30 @@ constructor(
         }
     }
 
+    /**
+     * Fork patch 3: inverse of [markAsReadFromListByDate] — marks the articles
+     * above/below the given date as *unread* instead of read.
+     *
+     * Deliberately a sibling rather than a parameter on the upstream function:
+     * editing `markAsReadFromListByDate` would entangle this feature with
+     * upstream's behaviour in the most frequently rebased file in the project.
+     */
+    fun markAsUnreadFromListByDate(date: Date, isBefore: Boolean) {
+        viewModelScope.launch(ioDispatcher) {
+            val items =
+                selectPositionalArticles(
+                    items = articleListUseCase.itemSnapshotList,
+                    date = date,
+                    isBefore = isBefore,
+                    targetUnread = true,
+                    isCurrentlyUnread = diffMapHolder::checkIfUnread,
+                )
+            if (items.isNotEmpty()) {
+                diffMapHolder.updateDiff(articleWithFeed = items.toTypedArray(), isUnread = true)
+            }
+        }
+    }
+
     fun loadNextFeedOrGroup() {
         viewModelScope.launch {
             if (
@@ -488,3 +512,33 @@ data class ReaderState(
 
     data object Loading : ContentState
 }
+
+/**
+ * Fork patch 3: selects the articles a "mark above/below as unread" action applies to.
+ *
+ * Kept as a pure top-level function (rather than inline in the ViewModel) so the
+ * selection rules can be unit tested on the JVM without an emulator — see
+ * `SelectPositionalArticlesTest`.
+ *
+ * @param items the currently loaded article flow, including date headers.
+ * @param date the date of the article the action was invoked on.
+ * @param isBefore true to look at articles dated after [date] (the list is sorted
+ *   earliest-first), false for articles dated before it.
+ * @param targetUnread the state to move the selected articles to.
+ * @param isCurrentlyUnread resolves an article's *effective* read state, which may
+ *   differ from the database value while a diff is still pending.
+ * @return the loaded articles on the requested side whose state actually changes.
+ */
+internal fun selectPositionalArticles(
+    items: List<ArticleFlowItem>,
+    date: Date,
+    isBefore: Boolean,
+    targetUnread: Boolean,
+    isCurrentlyUnread: (ArticleWithFeed) -> Boolean,
+): List<ArticleWithFeed> =
+    items
+        .filterIsInstance<ArticleFlowItem.Article>()
+        .map { it.articleWithFeed }
+        .filter { if (isBefore) date > it.article.date else date < it.article.date }
+        .filter { isCurrentlyUnread(it) != targetUnread }
+        .distinctBy { it.article.id }
