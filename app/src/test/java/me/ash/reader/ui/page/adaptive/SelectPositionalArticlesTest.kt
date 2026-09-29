@@ -41,13 +41,14 @@ class SelectPositionalArticlesTest {
     private fun header(date: Long) = ArticleFlowItem.Date(date.toString(), false)
 
     /** Resolves effective read state from the article's own flag, as DiffMapHolder does. */
-    private fun fromDb(item: ArticleWithFeed) = item.article.isUnread
+    private val fromDb: (ArticleWithFeed) -> Boolean = { it.article.isUnread }
 
     @Test
     fun `isBefore true selects only articles dated after the pivot`() {
+        // Read articles, so the only thing that can exclude them is the date.
         val items = listOf(
-            article("older", 500_000, isUnread = true),
-            article("newer", 1_500_000, isUnread = true),
+            article("older", 500_000),
+            article("newer", 1_500_000),
         )
 
         val selected =
@@ -59,8 +60,8 @@ class SelectPositionalArticlesTest {
     @Test
     fun `isBefore false selects only articles dated before the pivot`() {
         val items = listOf(
-            article("older", 500_000, isUnread = true),
-            article("newer", 1_500_000, isUnread = true),
+            article("older", 500_000),
+            article("newer", 1_500_000),
         )
 
         val selected =
@@ -72,8 +73,8 @@ class SelectPositionalArticlesTest {
     @Test
     fun `targetUnread true selects only currently read articles`() {
         val items = listOf(
-            article("already-unread", 1_500_000, isUnread = true),
-            article("already-read", 1_600_000, isUnread = false),
+            article("already-unread", 500_000, isUnread = true),
+            article("already-read", 600_000, isUnread = false),
         )
 
         val selected =
@@ -85,8 +86,8 @@ class SelectPositionalArticlesTest {
     @Test
     fun `targetUnread false selects only currently unread articles`() {
         val items = listOf(
-            article("already-unread", 1_500_000, isUnread = true),
-            article("already-read", 1_600_000, isUnread = false),
+            article("already-unread", 500_000, isUnread = true),
+            article("already-read", 600_000, isUnread = false),
         )
 
         val selected =
@@ -97,7 +98,7 @@ class SelectPositionalArticlesTest {
 
     @Test
     fun `articles dated exactly at the pivot are excluded from both sides`() {
-        val items = listOf(article("same", 1_000_000, isUnread = true))
+        val items = listOf(article("same", 1_000_000))
 
         assertEquals(
             emptyList<String>(),
@@ -114,9 +115,9 @@ class SelectPositionalArticlesTest {
     @Test
     fun `date headers are ignored`() {
         val items = listOf(
-            header(1_500_000),
-            article("a", 1_600_000, isUnread = true),
-            header(1_700_000),
+            header(400_000),
+            article("a", 500_000),
+            header(600_000),
         )
 
         val selected =
@@ -128,8 +129,8 @@ class SelectPositionalArticlesTest {
     @Test
     fun `duplicate article ids are collapsed`() {
         val items = listOf(
-            article("dupe", 1_500_000, isUnread = true),
-            article("dupe", 1_600_000, isUnread = true),
+            article("dupe", 500_000),
+            article("dupe", 600_000),
         )
 
         val selected =
@@ -143,7 +144,7 @@ class SelectPositionalArticlesTest {
         // The article is read in the database, but a diff has it marked unread this
         // session. Marking above as unread must not touch it, or the user would never
         // be able to clear it.
-        val items = listOf(article("pending-unread", 1_500_000, isUnread = false))
+        val items = listOf(article("pending-unread", 500_000, isUnread = false))
         val effectiveUnread: Set<String> = setOf("pending-unread")
 
         val selected =
