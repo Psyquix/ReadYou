@@ -21,7 +21,23 @@ designed to survive `track-upstream` merges without manual work.
    matching unread pair, scoped to the currently loaded articles exactly as the
    read pair is. The unread items only appear when there is something read
    above or below the long-pressed article, so on an unread filter the menu
-   stays the same length as upstream's.
+   stays the same length as upstream's. Filled arrows mean "becomes read",
+   outlined mean "becomes unread".
+
+### Verification status
+
+Being in `main` proves only that it compiles, signs, and passes the unit tests.
+It does not prove the behaviour. CI cannot exercise a Compose menu, so each
+patch carries a marker for what has actually been seen on a device.
+
+| Patch | Tests | Device-verified |
+|---|---|---|
+| 1. Feed-icon resolution | — | yes, in the field |
+| 2. Large-feed OOM guard | — | reported from the field (256 MB device) |
+| 3. Mark above/below as unread | `SelectPositionalArticlesTest`, 8 JVM tests | yes — menu shows and hides as intended |
+
+When a patch is merged, its row reads "no" until someone has run it. Promoting
+a row to "yes" is a docs commit; nothing enforces it.
 
 ### How the patches are shaped
 
@@ -34,7 +50,18 @@ Selection logic lives in the pure top-level `selectPositionalArticles`, covered
 by `SelectPositionalArticlesTest` (JVM, no emulator).
 
 When adding a patch, keep that property: it is what makes the weekly automated
-merge boring.
+merge boring. Check it before pushing:
+
+```sh
+git diff --numstat -- app/ | awk '{a+=$1; d+=$2} END {print "added="a" deleted="d}'
+```
+
+`deleted=0` is the invariant. A non-zero count means an upstream line was
+rewritten, and that is the change most likely to conflict on the next merge.
+This is checkable, so check it rather than eyeballing the diff.
+
+The one exception so far is a test file, which is fork-owned and not part of
+the invariant.
 
 ## Automation (`.github/workflows/`)
 
@@ -68,6 +95,19 @@ merge boring.
 Committing a patch: keep `merge upstream` out of the commit message, or
 `release` will trigger on it.
 
+### A passing test task is not proof that tests ran
+
+Gradle prints no per-test names at default log level, and a test class that is
+never discovered still reports `BUILD SUCCESSFUL`. That is not hypothetical: an
+early run of this fork's pipeline was green with every test in the suite
+silently skipped. `build_commit.yaml` now reads the JUnit XML and fails the
+build when no results exist or the count is zero, and publishes the report as
+`Unit-Test-Report`. Expect `unit tests: files=N tests=M failures=0 errors=0` in
+a healthy run — if that line is missing, the gate did not actually run.
+
+The report artifact is worth opening after adding a patch. A green count says
+the tests executed, not that they assert what you think they assert.
+
 ## Installing
 
 Releases carry signed-per-fork APKs (`v...+psyquix.N`, or `v...+psyquix.manual.N`
@@ -80,3 +120,24 @@ in the fork. Updates within the fork install over each other, no data loss.
 Upstream branding already points at `ReadYouApp/ReadYou`. If `Ashinch/ReadYou`
 goes stale, retarget `track-upstream.yml` (remote URL + API repo in the
 `gh api` call) at the new home.
+
+## Known rough edges
+
+- **Deprecations in `build_commit.yaml`** (upstream's file, left alone
+  deliberately): `actions/setup-java@v4` is deprecated, and `checkout@v4`,
+  `setup-java@v4` and `setup-gradle@v4` are being forced from Node 20 to
+  Node 24. Harmless while the forcing works. Bump them to `setup-java@v5` and
+  equivalents before those versions are force-upgraded, as a standalone commit
+  unrelated to any patch.
+- **Positional marking is scoped to loaded articles.** "Mark above/below as
+  unread" affects what paging has loaded, not the whole database, matching
+  upstream's read pair exactly. With a long feed, only the loaded window moves.
+- **The unread items are gated on the loaded range.** `ArticleList` computes the
+  first and last index holding a read article using `peek`, which returns null
+  for not-yet-loaded pages. Near a paging boundary this biases toward a shorter
+  menu — it can hide the item when there is genuinely something to act on. If
+  that shows up in use, widen the scan to the loaded range rather than removing
+  the gate.
+- **Device verification is manual.** Nothing in CI catches a Compose change
+  that compiles and tests but looks or behaves wrong. See the verification
+  table above.
