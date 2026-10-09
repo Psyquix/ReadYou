@@ -380,7 +380,7 @@ fun FlowPage(
             repeat(40) {
                 val items = pagingItems
                 val count = items?.itemCount ?: 0
-                if (count > 0) {
+                if (count > 0 && items != null) {
                     if (listState.firstVisibleItemIndex != 0) return@LaunchedEffect
                     var target = -1
                     for (i in 0 until count) {
