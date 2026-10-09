@@ -32,6 +32,13 @@ designed to survive `track-upstream` merges without manual work.
    and filter taps still go to top, and an open article owns the position on
    return. Upstream resets to top on every filter change (by construction) and
    on sync; the sync reset is left in place and restore runs after it.
+5. **Mark as read at end of article** (new `MarkAsReadAtEndPreference`, off by
+   default; `ReadingPage` + `ArticleListReaderViewModel.markCurrentArticleAsRead`):
+   with the setting on, opening an article no longer marks it read — swiping
+   to the end of the content does, in both the Native and WebView renderers.
+   Short articles already showing their end mark read on open, as before.
+   Backing out early leaves the article unread. The one-line gate in `readData`
+   is a second `app/` exception alongside versioning.
 
 ### Verification status
 
@@ -45,6 +52,7 @@ patch carries a marker for what has actually been seen on a device.
 | 2. Large-feed OOM guard | — | reported from the field (256 MB device) |
 | 3. Mark above/below as unread | `SelectPositionalArticlesTest`, 8 JVM tests | yes — menu shows and hides as intended |
 | 4. Per-feed scroll memory | `FlowScrollPositionTest`, 8 JVM tests | no — restores in CI only so far |
+| 5. Mark read at end of article | `MarkReadAtEndTest`, 8 JVM tests | no — end-detection in CI only so far |
 
 When a patch is merged, its row reads "no" until someone has run it. Promoting
 a row to "yes" is a docs commit; nothing enforces it.
