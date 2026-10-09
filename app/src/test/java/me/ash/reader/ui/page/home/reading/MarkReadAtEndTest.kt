@@ -56,21 +56,27 @@ class MarkReadAtEndTest {
 
     @Test
     fun `scroll at max is at end`() {
-        assertTrue(isScrollAtEnd(value = 1500, maxValue = 1500))
+        assertTrue(isScrollAtEnd(value = 1500, maxValue = 1500, contentLoaded = true))
     }
 
     @Test
     fun `scroll within tolerance is at end`() {
-        assertTrue(isScrollAtEnd(value = 1460, maxValue = 1500, tolerance = 50))
+        assertTrue(isScrollAtEnd(value = 1460, maxValue = 1500, contentLoaded = true, tolerance = 50))
     }
 
     @Test
     fun `scroll far from end is not at end`() {
-        assertFalse(isScrollAtEnd(value = 500, maxValue = 1500, tolerance = 50))
+        assertFalse(isScrollAtEnd(value = 500, maxValue = 1500, contentLoaded = true, tolerance = 50))
     }
 
     @Test
-    fun `nothing to scroll counts as at end`() {
-        assertTrue(isScrollAtEnd(value = 0, maxValue = 0))
+    fun `nothing to scroll counts as at end once loaded`() {
+        assertTrue(isScrollAtEnd(value = 0, maxValue = 0, contentLoaded = true))
+    }
+
+    @Test
+    fun `unmeasured content is never at end even at max`() {
+        assertFalse(isScrollAtEnd(value = 1500, maxValue = 1500, contentLoaded = false))
+        assertFalse(isScrollAtEnd(value = 0, maxValue = 0, contentLoaded = false))
     }
 }

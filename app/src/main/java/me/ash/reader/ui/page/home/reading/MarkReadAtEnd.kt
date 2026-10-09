@@ -18,5 +18,12 @@ fun isNativeListAtEnd(
     return lastVisibleOffset + lastVisibleSize <= viewportEndOffset
 }
 
-fun isScrollAtEnd(value: Int, maxValue: Int, tolerance: Int = 50): Boolean =
-    value >= maxValue - tolerance
+/**
+ * WebView end check. [contentLoaded] must be true: before the content loads,
+ * [maxValue] is still 0 (unmeasured) and indistinguishable from genuinely
+ * short content — treating it as the end marks the article on open.
+ */
+fun isScrollAtEnd(value: Int, maxValue: Int, contentLoaded: Boolean, tolerance: Int = 50): Boolean {
+    if (!contentLoaded) return false
+    return value >= maxValue - tolerance
+}
