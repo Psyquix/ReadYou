@@ -14,6 +14,10 @@ on:
         type: string
 permissions:
   contents: write
+env:
+  # Upstream release this fork's tree is based on. Shown in the release-notes
+  # footer. Bump it whenever an upstream merge moves the base.
+  UPSTREAM_BASE: "0.16.2"
 jobs:
   release:
     # Automatic path: only upstream merges. Manual path: operator's choice, but the
@@ -78,31 +82,36 @@ jobs:
           set -euo pipefail
           VER=$(grep -oE 'versionName *= *"[^"]+"' app/build.gradle.kts | grep -oE "[0-9.]+" | head -1)
           if [ "$KIND" = "manual" ]; then
-            TAG="v${VER}+psyquix.manual.${{ github.run_number }}"
-            NOTES="**Manual release.** Not an upstream merge.
+            TAG="v${VER}"
+            NOTES="Fork changelog:
+- Feed icons: the feed's declared image first, then the site homepage icons, then the feed host (upstream uses the feed host only)
+- Large feeds no longer crash low-memory devices on subscribe preview (parsed feed kept out of Compose state)
+- Article long-press menu gains mark above/below as unread
+- Article list remembers its scroll position per feed across restarts
 
-            Commit: $SHA
-            Build run: ${{ steps.source.outputs.run }}
+Full details in FORK.md.
 
-            Fork patches in this build:
-            - Feed-icon resolution: declared \`<image>\`, then site homepage, then feed host
-            - Large-feed OOM guard: parsed SyndFeed kept out of compose state
-            - Mark above/below as unread in the article long-press menu
-            - Per-feed article-list scroll memory, restored across restarts
+Commit: $SHA
+Build run: ${{ steps.source.outputs.run }}
 
-            Unit tests run before the APK is built and gate this release.
-            Runtime behaviour is unverified; see FORK.md."
+Note: fork version numbering restarted at 0.4.0. Migrating from a 0.16.x fork build requires an uninstall first (export OPML beforehand); updates within 0.4.x install over each other.
+
+Based on upstream ReadYou ${UPSTREAM_BASE} (Ashinch/ReadYou)."
           else
             TAG="v${VER}+psyquix.${{ github.run_number }}"
             NOTES="Automated build of upstream merge ($SHA).
 
-            Fork patches in this build:
-            - Feed-icon resolution: declared \`<image>\`, then site homepage, then feed host
-            - Large-feed OOM guard: parsed SyndFeed kept out of compose state
-            - Mark above/below as unread in the article long-press menu
-            - Per-feed article-list scroll memory, restored across restarts
+Fork changelog:
+- Feed icons: the feed's declared image first, then the site homepage icons, then the feed host (upstream uses the feed host only)
+- Large feeds no longer crash low-memory devices on subscribe preview (parsed feed kept out of Compose state)
+- Mark above/below as unread in the article long-press menu
+- Per-feed article-list scroll memory, restored across restarts
 
-            Unit tests run before the APK is built and gate this release. See FORK.md."
+Full details in FORK.md.
+
+Unit tests run before the APK is built and gate this release.
+
+Based on upstream ReadYou ${UPSTREAM_BASE} (Ashinch/ReadYou)."
           fi
           if gh release view "$TAG" -R "${{ github.repository }}" >/dev/null 2>&1; then
             echo "release $TAG exists, skipping"

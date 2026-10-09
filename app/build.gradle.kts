@@ -14,15 +14,6 @@ plugins {
     alias(libs.plugins.kotlin.parcelize)
 }
 
-fun fetchGitCommitHash(): String {
-    val process =
-        ProcessBuilder("git", "rev-parse", "--verify", "--short", "HEAD")
-            .redirectErrorStream(true)
-            .start()
-    return process.inputStream.bufferedReader().use { it.readText().trim() }
-}
-
-val gitCommitHash = fetchGitCommitHash()
 val keyProps = Properties()
 val releaseKeyPropsFile: File = rootProject.file("signature/keystore_release.properties")
 val debugKeyPropsFile: File = rootProject.file("signature/keystore.properties")
@@ -42,8 +33,8 @@ android {
         applicationId = "me.ash.reader"
         minSdk = 26
         targetSdk = 34
-        versionCode = 48
-        versionName = "0.16.3"
+        versionCode = 4
+        versionName = "0.4.0"
 
         buildConfigField(
             "String",
@@ -95,7 +86,7 @@ android {
     applicationVariants.all {
         outputs.all {
             (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
-                "ReadYou-${defaultConfig.versionName}-${gitCommitHash}.apk"
+                "ReadYou-${defaultConfig.versionName}-Manual.apk"
         }
     }
     kotlinOptions {

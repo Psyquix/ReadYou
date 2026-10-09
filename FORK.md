@@ -73,21 +73,29 @@ This is checkable, so check it rather than eyeballing the diff.
 The one exception so far is a test file, which is fork-owned and not part of
 the invariant.
 
+The second exception is versioning: `versionCode`, `versionName`, and the APK
+`outputFileName` in `app/build.gradle.kts` are fork-managed (currently `4` /
+`0.4.0` / `ReadYou-<version>-Manual.apk`). Upstream bumps its own version
+lines on every release, so these lines conflict on every upstream merge —
+that is expected. Resolution is always "keep ours". When an upstream merge
+moves the base, also bump `UPSTREAM_BASE` in `release.yml` so the next
+release-notes footer names the right upstream version.
+
 ## Automation (`.github/workflows/`)
 
 - `track-upstream` (weekly Mondays + manual): merges the latest
   `Ashinch/ReadYou` release into `main` and pushes (which triggers the stock
   `Build Commit` APK build). Opens an issue on merge conflict — resolve by
   hand, keeping both sides where sensible.
-- `release` publishes `vX.Y.Z+psyquix.N` with the APK attached, two ways:
+- `release` publishes `v0.4.0`-style tags with the APK attached, two ways:
   - **automatically** — on green `Build Commit` runs whose head commit contains
     `merge upstream`
   - **manually** — `workflow_dispatch` with a `source_run` input (a Build Commit
-    run id). Tags as `vX.Y.Z+psyquix.manual.N` and the notes lead with
-    "Manual release. Not an upstream merge." A run that did not conclude
-    `success` is refused, so a red build cannot be published by hand. The
-    workflow checks out the source run's commit, so `versionName` is read from
-    the tree the APK was built from.
+    run id). Tags as `vX.Y.Z` and the notes carry the fork changelog plus a
+    footer naming the upstream base (`UPSTREAM_BASE` at the top of
+    `release.yml`). A run that did not conclude `success` is refused, so a
+    red build cannot be published by hand. The workflow checks out the source
+    run's commit, so `versionName` is read from the tree the APK was built from.
 
   ```sh
   gh workflow run release.yml -f source_run=<Build Commit run id>
@@ -120,10 +128,12 @@ the tests executed, not that they assert what you think they assert.
 
 ## Installing
 
-Releases carry signed-per-fork APKs (`v...+psyquix.N`, or `v...+psyquix.manual.N`
-for a manual build). Migrating from stock
-requires uninstall (different signature): export OPML first, then import it
-in the fork. Updates within the fork install over each other, no data loss.
+Releases carry fork-versioned APKs (`ReadYou-0.4.0-Manual.apk` under tag
+`v0.4.0`). Migrating from stock requires uninstall (different signature):
+export OPML first, then import it in the fork. Migrating from a `0.16.x`
+fork build also requires an uninstall (fork version numbering restarted at
+`0.4.0`, so the version code went down and Android refuses the update).
+Updates within `0.4.x` install over each other, no data loss.
 
 ## If upstream moves
 
