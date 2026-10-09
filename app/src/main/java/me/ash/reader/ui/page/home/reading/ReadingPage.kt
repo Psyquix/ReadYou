@@ -231,12 +231,22 @@ fun ReadingPage(
                                 // Fork patch 5: mark read at end of article. Pure insertion.
                                 val markAtEnd = LocalMarkAsReadAtEnd.current.value
                                 val readerRenderer = LocalReadingRenderer.current
-                                LaunchedEffect(readerState.articleId, markAtEnd, readerRenderer) {
-                                    if (!markAtEnd) return@LaunchedEffect
+                                val contentLoaded = content !is ReaderState.Loading
+                                LaunchedEffect(
+                                    readerState.articleId,
+                                    markAtEnd,
+                                    readerRenderer,
+                                    contentLoaded,
+                                ) {
+                                    if (!markAtEnd || !contentLoaded) return@LaunchedEffect
                                     snapshotFlow {
                                         when (readerRenderer) {
                                             ReadingRendererPreference.WebView ->
-                                                isScrollAtEnd(scrollState.value, scrollState.maxValue)
+                                                isScrollAtEnd(
+                                                    scrollState.value,
+                                                    scrollState.maxValue,
+                                                    contentLoaded,
+                                                )
 
                                             ReadingRendererPreference.NativeComponent -> {
                                                 val layout = listState.layoutInfo
