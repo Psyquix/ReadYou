@@ -2,10 +2,13 @@ package me.ash.reader.ui.component.webview
 
 import android.util.Log
 import androidx.compose.material3.MaterialTheme
+import android.webkit.WebView
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -32,6 +35,7 @@ import me.ash.reader.infrastructure.preference.ReadingFontsPreference
 import me.ash.reader.ui.ext.ExternalFonts
 import me.ash.reader.ui.ext.openURL
 import me.ash.reader.ui.ext.surfaceColorAtElevation
+import me.ash.reader.ui.page.home.reading.isWebViewContentAtEnd
 import me.ash.reader.ui.theme.palette.alwaysLight
 
 @Composable
@@ -40,6 +44,9 @@ fun RYWebView(
     content: String,
     refererDomain: String? = null,
     onImageClick: ((imgUrl: String, altText: String) -> Unit)? = null,
+    // Fork patch 5: reports the WebView's own scroll end (its content scrolls
+    // internally, invisible to Compose). Null by default: upstream untouched.
+    onContentEndReached: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val maxWidth = LocalConfiguration.current.screenWidthDp.dp.value
@@ -87,6 +94,25 @@ fun RYWebView(
                 )
             )
         }
+
+    // Fork patch 5: bridge WebView-internal scrolling out. Pure insertion.
+    val latestEndReached by rememberUpdatedState(onContentEndReached)
+    DisposableEffect(webView) {
+        webView.setOnScrollChangeListener { v, _, scrollY, _, _ ->
+            val wv = v as WebView
+            if (
+                isWebViewContentAtEnd(
+                    scrollY = scrollY,
+                    scale = wv.scale,
+                    contentHeight = wv.contentHeight,
+                    viewHeight = wv.height,
+                )
+            ) {
+                latestEndReached?.invoke()
+            }
+        }
+        onDispose { webView.setOnScrollChangeListener(null) }
+    }
 
     val fontPath =
         if (readingFonts is ReadingFontsPreference.External)
