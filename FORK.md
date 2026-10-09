@@ -23,6 +23,15 @@ designed to survive `track-upstream` merges without manual work.
    above or below the long-pressed article, so on an unread filter the menu
    stays the same length as upstream's. Filled arrows mean "becomes read",
    outlined mean "becomes unread".
+4. **Per-feed scroll memory** (`FlowPage` + `FlowScrollRestore` +
+   `FlowScrollPositionStore`): each feed/group/filter remembers its article-list
+   position (article id + index + offset, DataStore-backed) and restores it
+   across restarts, back-navigation, and feed switches. Anchored on the article
+   id so new arrivals above do not shift the user; a gone article falls back
+   to the clamped saved index. Search results are never stored, mark-all-read
+   and filter taps still go to top, and an open article owns the position on
+   return. Upstream resets to top on every filter change (by construction) and
+   on sync; the sync reset is left in place and restore runs after it.
 
 ### Verification status
 
@@ -35,6 +44,7 @@ patch carries a marker for what has actually been seen on a device.
 | 1. Feed-icon resolution | — | yes, in the field |
 | 2. Large-feed OOM guard | — | reported from the field (256 MB device) |
 | 3. Mark above/below as unread | `SelectPositionalArticlesTest`, 8 JVM tests | yes — menu shows and hides as intended |
+| 4. Per-feed scroll memory | `FlowScrollPositionTest`, 8 JVM tests | no — restores in CI only so far |
 
 When a patch is merged, its row reads "no" until someone has run it. Promoting
 a row to "yes" is a docs commit; nothing enforces it.
@@ -141,3 +151,10 @@ goes stale, retarget `track-upstream.yml` (remote URL + API repo in the
 - **Device verification is manual.** Nothing in CI catches a Compose change
   that compiles and tests but looks or behaves wrong. See the verification
   table above.
+- **Scroll memory restores once per list.** If you pull-to-sync while deep in
+  a feed, upstream jumps to top and the patch jumps back — a deliberate
+  flicker that keeps the change a pure insertion. If you scroll to top
+  yourself in the half-second before the jump-back fires, it will yank you
+  back down; scroll again and it stays (a scrolled list is never restored
+  over). One DataStore entry is kept per feed/group/filter/sort; nothing
+  prunes entries for deleted feeds.
