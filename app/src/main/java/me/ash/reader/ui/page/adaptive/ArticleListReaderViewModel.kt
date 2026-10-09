@@ -317,7 +317,11 @@ constructor(
                     ?: (itemFromList?.articleWithFeed
                         ?: rssService.get().findArticleById(articleId)!!)
 
-            if (diffMapHolder.checkIfUnread(item)) {
+            // Fork patch 5: with mark-at-end on, opening only loads; the
+            // end-of-content effect marks read instead. One-line exception.
+            if (!settingsProvider.settings.markAsReadAtEnd.value &&
+                diffMapHolder.checkIfUnread(item)
+            ) {
                 diffMapHolder.updateDiff(item, isUnread = false)
             }
             item.run {
@@ -343,6 +347,22 @@ constructor(
     fun clearReadingData() {
         _readingUiState.update { ReadingUiState() }
         _readerState.update { ReaderState() }
+    }
+
+    /**
+     * Fork patch 5: marks the open article as read once the reader reaches the
+     * end of it. Sibling to the immediate mark in [readData]; called from the
+     * reading page only when the mark-at-end setting is on. Idempotent: a
+     * second call after the first is a no-op.
+     */
+    fun markCurrentArticleAsRead() {
+        viewModelScope.launch(ioDispatcher) {
+            readingUiState.value.articleWithFeed?.let {
+                if (diffMapHolder.checkIfUnread(it)) {
+                    diffMapHolder.updateDiff(it, isUnread = false)
+                }
+            }
+        }
     }
 
     suspend fun ReaderState.renderContent(articleWithFeed: ArticleWithFeed): ReaderState {

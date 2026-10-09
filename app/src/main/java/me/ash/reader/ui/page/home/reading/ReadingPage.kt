@@ -43,10 +43,13 @@ import kotlin.math.abs
 import kotlinx.coroutines.launch
 import me.ash.reader.R
 import me.ash.reader.infrastructure.android.TextToSpeechManager
+import me.ash.reader.infrastructure.preference.LocalMarkAsReadAtEnd
 import me.ash.reader.infrastructure.preference.LocalPullToSwitchArticle
 import me.ash.reader.infrastructure.preference.LocalReadingAutoHideToolbar
 import me.ash.reader.infrastructure.preference.LocalReadingBoldCharacters
+import me.ash.reader.infrastructure.preference.LocalReadingRenderer
 import me.ash.reader.infrastructure.preference.LocalReadingTextLineHeight
+import me.ash.reader.infrastructure.preference.ReadingRendererPreference
 import me.ash.reader.infrastructure.preference.not
 import me.ash.reader.ui.ext.collectAsStateValue
 import me.ash.reader.ui.ext.showToast
@@ -224,6 +227,35 @@ fun ReadingPage(
                                                 listState.firstVisibleItemIndex != 0
                                         }
                                         .collectAsStateValue(initial = false)
+
+                                // Fork patch 5: mark read at end of article. Pure insertion.
+                                val markAtEnd = LocalMarkAsReadAtEnd.current.value
+                                val readerRenderer = LocalReadingRenderer.current
+                                LaunchedEffect(readerState.articleId, markAtEnd, readerRenderer) {
+                                    if (!markAtEnd) return@LaunchedEffect
+                                    snapshotFlow {
+                                        when (readerRenderer) {
+                                            ReadingRendererPreference.WebView ->
+                                                isScrollAtEnd(scrollState.value, scrollState.maxValue)
+
+                                            ReadingRendererPreference.NativeComponent -> {
+                                                val layout = listState.layoutInfo
+                                                val last =
+                                                    layout.visibleItemsInfo.lastOrNull()
+                                                if (last == null) false
+                                                else isNativeListAtEnd(
+                                                    lastVisibleIndex = last.index,
+                                                    lastVisibleOffset = last.offset,
+                                                    lastVisibleSize = last.size,
+                                                    viewportEndOffset = layout.viewportEndOffset,
+                                                    totalItemsCount = layout.totalItemsCount,
+                                                )
+                                            }
+                                        }
+                                    }.collect { atEnd ->
+                                        if (atEnd) viewModel.markCurrentArticleAsRead()
+                                    }
+                                }
 
                                 CompositionLocalProvider(
                                     LocalTextStyle provides

@@ -28,6 +28,7 @@ import me.ash.reader.infrastructure.preference.LocalArticleListSwipeStartAction
 import me.ash.reader.infrastructure.preference.LocalHideEmptyGroups
 import me.ash.reader.infrastructure.preference.LocalInitialFilter
 import me.ash.reader.infrastructure.preference.LocalInitialPage
+import me.ash.reader.infrastructure.preference.LocalMarkAsReadAtEnd
 import me.ash.reader.infrastructure.preference.LocalMarkAsReadOnScroll
 import me.ash.reader.infrastructure.preference.LocalOpenLink
 import me.ash.reader.infrastructure.preference.LocalOpenLinkSpecificBrowser
@@ -62,6 +63,7 @@ fun InteractionPage(
     val swipeToStartAction = LocalArticleListSwipeStartAction.current
     val swipeToEndAction = LocalArticleListSwipeEndAction.current
     val markAsReadOnScroll = LocalMarkAsReadOnScroll.current
+    val markAsReadAtEnd = LocalMarkAsReadAtEnd.current
     val hideEmptyGroups = LocalHideEmptyGroups.current
     val sortUnreadArticles = LocalSortUnreadArticles.current
     val pullToSwitchArticle = LocalPullToSwitchArticle.current
@@ -196,6 +198,14 @@ fun InteractionPage(
                         onClick = { pullToSwitchArticle.toggle(context, scope) }) {
                         RYSwitch(activated = pullToSwitchArticle.value) {
                             pullToSwitchArticle.toggle(context, scope)
+                        }
+                    }
+                    // Fork patch 5: mark read at end of article. Pure insertion.
+                    SettingItem(
+                        title = stringResource(id = R.string.mark_as_read_at_end),
+                        onClick = { markAsReadAtEnd.toggle(context, scope) }) {
+                        RYSwitch(activated = markAsReadAtEnd.value) {
+                            markAsReadAtEnd.toggle(context, scope)
                         }
                     }
                     Spacer(modifier = Modifier.height(24.dp))
