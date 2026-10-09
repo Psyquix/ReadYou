@@ -88,6 +88,7 @@ jobs:
             - Feed-icon resolution: declared \`<image>\`, then site homepage, then feed host
             - Large-feed OOM guard: parsed SyndFeed kept out of compose state
             - Mark above/below as unread in the article long-press menu
+            - Per-feed article-list scroll memory, restored across restarts
 
             Unit tests run before the APK is built and gate this release.
             Runtime behaviour is unverified; see FORK.md."
@@ -99,6 +100,7 @@ jobs:
             - Feed-icon resolution: declared \`<image>\`, then site homepage, then feed host
             - Large-feed OOM guard: parsed SyndFeed kept out of compose state
             - Mark above/below as unread in the article long-press menu
+            - Per-feed article-list scroll memory, restored across restarts
 
             Unit tests run before the APK is built and gate this release. See FORK.md."
           fi
