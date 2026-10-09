@@ -88,6 +88,7 @@ jobs:
             - Large feeds no longer crash low-memory devices on subscribe preview (parsed feed kept out of Compose state)
             - Article long-press menu gains mark above/below as unread
             - Article list remembers its scroll position per feed across restarts
+            - New setting: mark as read at end of article instead of on open (both renderers)
 
             Full details in FORK.md.
 
@@ -106,6 +107,7 @@ jobs:
             - Large feeds no longer crash low-memory devices on subscribe preview (parsed feed kept out of Compose state)
             - Mark above/below as unread in the article long-press menu
             - Per-feed article-list scroll memory, restored across restarts
+            - New setting: mark as read at end of article instead of on open (both renderers)
 
             Full details in FORK.md.
 
