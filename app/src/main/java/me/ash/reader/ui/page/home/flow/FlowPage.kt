@@ -68,6 +68,7 @@ import androidx.compose.ui.zIndex
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import me.ash.reader.R
@@ -148,6 +149,22 @@ fun FlowPage(
     val filterUiState = pagerData.filterState
 
     val listState = rememberSaveable(pagerData, saver = LazyListState.Saver) { LazyListState(0, 0) }
+
+    // Fork patch 4: per-feed scroll memory — key identifying this list. Pure insertion.
+    val scrollMemorySortEarliest =
+        filterUiState.filter.isUnread() &&
+            LocalSortUnreadArticles.current == SortUnreadArticlesPreference.Earliest
+    val scrollMemoryKey =
+        remember(
+            filterUiState.feed?.id,
+            filterUiState.group?.id,
+            filterUiState.filter.index,
+            scrollMemorySortEarliest,
+        ) {
+            flowScrollKey(filterUiState, sortEarliest = scrollMemorySortEarliest)
+        }
+    val scrollMemoryEnabled = filterUiState.searchContent.isNullOrBlank()
+    var scrollMemoryReady by remember(scrollMemoryKey) { mutableStateOf(false) }
 
     val isTopBarElevated = topBarTonalElevation.value > 0
     val scrolledTopBarContainerColor =
@@ -286,6 +303,29 @@ fun FlowPage(
 
     var pagingItems: LazyPagingItems<ArticleFlowItem>? by remember { mutableStateOf(null) }
 
+    // Fork patch 4: persist the first visible article per feed (debounced).
+    // Skipped until the restore below finishes, so a cold start never
+    // overwrites the saved position with the initial top. Pure insertion.
+    LaunchedEffect(listState, scrollMemoryKey, scrollMemoryEnabled) {
+        if (!scrollMemoryEnabled) return@LaunchedEffect
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .collectLatest { (index, offset) ->
+                delay(500)
+                if (!scrollMemoryReady) return@collectLatest
+                val id =
+                    try {
+                        (pagingItems?.peek(index) as? ArticleFlowItem.Article)
+                            ?.articleWithFeed?.article?.id
+                    } catch (_: Exception) {
+                        null
+                    } ?: return@collectLatest
+                context.applicationContext.saveFlowScrollPosition(
+                    scrollMemoryKey,
+                    FlowScrollPosition(articleId = id, index = index, offset = offset),
+                )
+            }
+    }
+
     if (isTwoPane) {
         LaunchedEffect(readerState) {
             if (readerState.articleId != null) {
@@ -325,6 +365,49 @@ fun FlowPage(
     }
 
     val isSyncing = viewModel.isSyncingFlow.collectAsStateValue()
+
+    // Fork patch 4: restore the saved position once items load, and again after
+    // a sync (upstream's scroll-to-top above is left untouched; restore simply
+    // runs after it). An open article owns the position instead. Pure insertion.
+    LaunchedEffect(pagerData.pager, scrollMemoryKey, scrollMemoryEnabled, isSyncing) {
+        try {
+            if (!scrollMemoryEnabled) return@LaunchedEffect
+            if (readerState.articleId != null) return@LaunchedEffect
+            val saved =
+                context.applicationContext.loadFlowScrollPosition(scrollMemoryKey)
+                    ?: return@LaunchedEffect
+            if (saved.index <= 0) return@LaunchedEffect
+            repeat(40) {
+                val items = pagingItems
+                val count = items?.itemCount ?: 0
+                if (count > 0 && items != null) {
+                    if (listState.firstVisibleItemIndex != 0) return@LaunchedEffect
+                    var target = -1
+                    for (i in 0 until count) {
+                        val item =
+                            try {
+                                items.peek(i)
+                            } catch (_: Exception) {
+                                null
+                            }
+                        if ((item as? ArticleFlowItem.Article)?.articleWithFeed?.article?.id ==
+                            saved.articleId
+                        ) {
+                            target = i
+                            break
+                        }
+                    }
+                    val index =
+                        if (target != -1) target else saved.index.coerceIn(0, count - 1)
+                    if (index > 0) listState.scrollToItem(index, saved.offset)
+                    return@LaunchedEffect
+                }
+                delay(250)
+            }
+        } finally {
+            scrollMemoryReady = true
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         RYScaffold(
