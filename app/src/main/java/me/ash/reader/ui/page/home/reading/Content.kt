@@ -48,6 +48,8 @@ fun Content(
     isLoading: Boolean,
     contentPadding: PaddingValues = PaddingValues(),
     onImageClick: ((imgUrl: String, altText: String) -> Unit)? = null,
+    // Fork patch 5: WebView end callback (default null: upstream untouched).
+    onContentEndReached: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val subheadUpperCase = LocalReadingSubheadUpperCase.current
@@ -100,6 +102,7 @@ fun Content(
                                 content = content,
                                 refererDomain = link.extractDomain(),
                                 onImageClick = onImageClick,
+                                onContentEndReached = onContentEndReached,
                             )
                             Spacer(modifier = Modifier.height(128.dp))
                             Spacer(

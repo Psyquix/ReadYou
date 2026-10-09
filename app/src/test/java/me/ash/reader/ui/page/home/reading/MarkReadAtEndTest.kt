@@ -55,28 +55,34 @@ class MarkReadAtEndTest {
     }
 
     @Test
-    fun `scroll at max is at end`() {
-        assertTrue(isScrollAtEnd(value = 1500, maxValue = 1500, contentLoaded = true))
+    fun `webview at bottom is at end`() {
+        assertTrue(isWebViewContentAtEnd(scrollY = 1000, scale = 1f, contentHeight = 2000, viewHeight = 1000))
     }
 
     @Test
-    fun `scroll within tolerance is at end`() {
-        assertTrue(isScrollAtEnd(value = 1460, maxValue = 1500, contentLoaded = true, tolerance = 50))
+    fun `webview within tolerance is at end`() {
+        assertTrue(isWebViewContentAtEnd(scrollY = 995, scale = 1f, contentHeight = 2000, viewHeight = 1000, tolerancePx = 8))
     }
 
     @Test
-    fun `scroll far from end is not at end`() {
-        assertFalse(isScrollAtEnd(value = 500, maxValue = 1500, contentLoaded = true, tolerance = 50))
+    fun `webview mid content is not at end`() {
+        assertFalse(isWebViewContentAtEnd(scrollY = 500, scale = 1f, contentHeight = 2000, viewHeight = 1000))
     }
 
     @Test
-    fun `nothing to scroll counts as at end once loaded`() {
-        assertTrue(isScrollAtEnd(value = 0, maxValue = 0, contentLoaded = true))
+    fun `webview content scale is applied`() {
+        assertTrue(isWebViewContentAtEnd(scrollY = 1500, scale = 1.5f, contentHeight = 2000, viewHeight = 1500))
+        assertFalse(isWebViewContentAtEnd(scrollY = 500, scale = 1.5f, contentHeight = 2000, viewHeight = 1500))
     }
 
     @Test
-    fun `unmeasured content is never at end even at max`() {
-        assertFalse(isScrollAtEnd(value = 1500, maxValue = 1500, contentLoaded = false))
-        assertFalse(isScrollAtEnd(value = 0, maxValue = 0, contentLoaded = false))
+    fun `webview unlaid-out or unloaded is never at end`() {
+        assertFalse(isWebViewContentAtEnd(scrollY = 0, scale = 1f, contentHeight = 2000, viewHeight = 0))
+        assertFalse(isWebViewContentAtEnd(scrollY = 0, scale = 1f, contentHeight = 0, viewHeight = 1000))
+    }
+
+    @Test
+    fun `webview short content is at end once laid out`() {
+        assertTrue(isWebViewContentAtEnd(scrollY = 0, scale = 1f, contentHeight = 500, viewHeight = 1000))
     }
 }

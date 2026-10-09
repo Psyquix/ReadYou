@@ -229,41 +229,47 @@ fun ReadingPage(
                                         .collectAsStateValue(initial = false)
 
                                 // Fork patch 5: mark read at end of article. Pure insertion.
+                                // Native is observed here; WebView reports its own scroll
+                                // end via onContentEndReached (its content scrolls
+                                // internally, invisible to Compose). Live readerState is
+                                // used because the AnimatedContent snapshot is frozen.
                                 val markAtEnd = LocalMarkAsReadAtEnd.current.value
                                 val readerRenderer = LocalReadingRenderer.current
-                                val contentLoaded = content !is ReaderState.Loading
-                                LaunchedEffect(
-                                    readerState.articleId,
-                                    markAtEnd,
-                                    readerRenderer,
-                                    contentLoaded,
-                                ) {
-                                    if (!markAtEnd || !contentLoaded) return@LaunchedEffect
-                                    snapshotFlow {
-                                        when (readerRenderer) {
-                                            ReadingRendererPreference.WebView ->
-                                                isScrollAtEnd(
-                                                    scrollState.value,
-                                                    scrollState.maxValue,
-                                                    contentLoaded,
-                                                )
-
-                                            ReadingRendererPreference.NativeComponent -> {
-                                                val layout = listState.layoutInfo
-                                                val last =
-                                                    layout.visibleItemsInfo.lastOrNull()
-                                                if (last == null) false
-                                                else isNativeListAtEnd(
-                                                    lastVisibleIndex = last.index,
-                                                    lastVisibleOffset = last.offset,
-                                                    lastVisibleSize = last.size,
-                                                    viewportEndOffset = layout.viewportEndOffset,
-                                                    totalItemsCount = layout.totalItemsCount,
-                                                )
-                                            }
+                                val liveContentLoaded =
+                                    readerState.content !is ReaderState.Loading
+                                val markAtWebViewEnd =
+                                    remember(readerState.articleId, markAtEnd) {
+                                        if (markAtEnd) {
+                                            { viewModel.markCurrentArticleAsRead() }
+                                        } else {
+                                            null
                                         }
-                                    }.collect { atEnd ->
-                                        if (atEnd) viewModel.markCurrentArticleAsRead()
+                                    }
+                                if (readerRenderer == ReadingRendererPreference.NativeComponent) {
+                                    LaunchedEffect(
+                                        readerState.articleId,
+                                        markAtEnd,
+                                        liveContentLoaded,
+                                    ) {
+                                        if (!markAtEnd || !liveContentLoaded) {
+                                            return@LaunchedEffect
+                                        }
+                                        snapshotFlow {
+                                            val layout = listState.layoutInfo
+                                            val last =
+                                                layout.visibleItemsInfo.lastOrNull()
+                                            if (last == null) false
+                                            else isNativeListAtEnd(
+                                                lastVisibleIndex = last.index,
+                                                lastVisibleOffset = last.offset,
+                                                lastVisibleSize = last.size,
+                                                viewportEndOffset =
+                                                    layout.viewportEndOffset,
+                                                totalItemsCount = layout.totalItemsCount,
+                                            )
+                                        }.collect { atEnd ->
+                                            if (atEnd) viewModel.markCurrentArticleAsRead()
+                                        }
                                     }
                                 }
 
@@ -308,6 +314,7 @@ fun ReadingPage(
                                                 currentImageData = ImageData(imgUrl, altText)
                                                 showFullScreenImageViewer = true
                                             },
+                                            onContentEndReached = markAtWebViewEnd,
                                         )
                                         PullToLoadIndicator(
                                             state = state,
