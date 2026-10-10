@@ -81,6 +81,8 @@ fun Preferences.toSettings(): Settings {
         swipeEndAction = SwipeEndActionPreference.fromPreferences(this),
         markAsReadOnScroll = MarkAsReadOnScrollPreference.fromPreferences(this),
         markAsReadAtEnd = MarkAsReadAtEndPreference.fromPreferences(this),
+        inProgressStyle = InProgressStylePreference.fromPreferences(this),
+        inProgressColor = InProgressColorPreference.fromPreferences(this),
         hideEmptyGroups = HideEmptyGroupsPreference.fromPreferences(this),
         pullToSwitchFeed = PullToLoadNextFeedPreference.fromPreference(this),
         pullToSwitchArticle = PullToSwitchArticlePreference.fromPreference(this),

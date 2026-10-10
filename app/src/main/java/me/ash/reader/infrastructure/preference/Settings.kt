@@ -74,6 +74,8 @@ data class Settings(
     val swipeEndAction: SwipeEndActionPreference = SwipeEndActionPreference.default,
     val markAsReadOnScroll: MarkAsReadOnScrollPreference = MarkAsReadOnScrollPreference.default,
     val markAsReadAtEnd: MarkAsReadAtEndPreference = MarkAsReadAtEndPreference.default,
+    val inProgressStyle: InProgressStylePreference = InProgressStylePreference.default,
+    val inProgressColor: InProgressColorPreference = InProgressColorPreference.default,
     val hideEmptyGroups: HideEmptyGroupsPreference = HideEmptyGroupsPreference.default,
     val pullToSwitchFeed: PullToLoadNextFeedPreference = PullToLoadNextFeedPreference.default,
     val pullToSwitchArticle: PullToSwitchArticlePreference = PullToSwitchArticlePreference.default,

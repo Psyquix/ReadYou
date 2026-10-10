@@ -71,6 +71,11 @@ designed to survive `track-upstream` merges without manual work.
    `ReadingPositionStore`): unread articles holding a saved spot get a short
    primary bar at the row's start edge. Shown only while still unread, so
    list-side marks can never leave it on a greyed row; no new preference.
+9. **In-progress style + color** (new `InProgressStyle` subpage under Color &
+   style): choose edge bar or full-card highlight wash, and the marker color —
+   automatic theme accent by default, or a custom color from the spectrum
+   picker (writes on Apply), live-generated strength swatches, and accent
+   shade swatches. Pure color math is JVM-tested; rendering needs eyes.
 
 ### Verification status
 
@@ -88,6 +93,7 @@ patch carries a marker for what has actually been seen on a device.
 | 6. Update-check retarget | — (string resource, no logic) | no |
 | 7. Per-article reading positions | `ReadingPositionTest`, 7 JVM tests | no — jumping in CI only so far |
 | 8. In-progress accent bar | `ReadingInProgressTest`, 5 JVM tests | no — bar in CI only so far |
+| 9. In-progress style + color | `InProgressColorsTest`, 7 JVM tests | no — picker in CI only so far |
 
 When a patch is merged, its row reads "no" until someone has run it. Promoting
 a row to "yes" is a docs commit; nothing enforces it.

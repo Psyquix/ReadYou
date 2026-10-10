@@ -41,6 +41,8 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
@@ -82,6 +84,8 @@ import me.ash.reader.infrastructure.preference.LocalFlowFilterBarPadding
 import me.ash.reader.infrastructure.preference.LocalFlowFilterBarStyle
 import me.ash.reader.infrastructure.preference.LocalFlowFilterBarTonalElevation
 import me.ash.reader.infrastructure.preference.LocalFlowTopBarTonalElevation
+import me.ash.reader.infrastructure.preference.LocalInProgressColor
+import me.ash.reader.infrastructure.preference.LocalInProgressStyle
 import me.ash.reader.infrastructure.preference.LocalMarkAsReadOnScroll
 import me.ash.reader.infrastructure.preference.LocalOpenLink
 import me.ash.reader.infrastructure.preference.LocalOpenLinkSpecificBrowser
@@ -108,6 +112,8 @@ import me.ash.reader.ui.page.home.reading.PullToLoadDefaults.ContentOffsetMultip
 import me.ash.reader.ui.page.home.reading.PullToLoadState
 import me.ash.reader.ui.page.home.reading.pullToLoad
 import me.ash.reader.ui.page.home.reading.rememberPullToLoadState
+import me.ash.reader.infrastructure.preference.InProgressStylePreference
+import me.ash.reader.ui.page.settings.color.inprogress.resolveReadingColorArgb
 
 @OptIn(
     ExperimentalMaterial3Api::class,
@@ -384,6 +390,15 @@ fun FlowPage(
     val isSyncing = viewModel.isSyncingFlow.collectAsStateValue()
     // Fork patch 8: ids with a saved reading spot, for the accent bar.
     val inProgressIds = viewModel.inProgressIds.collectAsStateValue()
+    // Fork patch 9: in-progress style + color. AUTO follows the theme accent.
+    val inProgressStyle = LocalInProgressStyle.current
+    val readingColor =
+        Color(
+            resolveReadingColorArgb(
+                LocalInProgressColor.current.value,
+                MaterialTheme.colorScheme.primary.toArgb(),
+            )
+        )
 
     // Fork patch 4: restore the saved position once items load, and again after
     // a sync (upstream's scroll-to-top above is left untouched; restore simply
@@ -801,6 +816,8 @@ fun FlowPage(
                                 pagingItems = pagingItems,
                                 diffMap = viewModel.diffMapHolder.diffMap,
                                 inProgressIds = inProgressIds,
+                                inProgressStyle = inProgressStyle,
+                                readingColor = readingColor,
                                 isShowFeedIcon = articleListFeedIcon.value,
                                 isShowStickyHeader = articleListDateStickyHeader.value,
                                 articleListTonalElevation = articleListTonalElevation.value,

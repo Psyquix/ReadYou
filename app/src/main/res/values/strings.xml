@@ -350,6 +350,16 @@
     <string name="about">About</string>
     <string name="mark_as_read_on_scroll">Mark as read on scroll</string>
     <string name="mark_as_read_at_end">Mark as read at end of article</string>
+    <string name="in_progress">In progress</string>
+    <string name="in_progress_style">Style</string>
+    <string name="in_progress_edge_bar">Edge bar</string>
+    <string name="in_progress_highlight">Highlight</string>
+    <string name="in_progress_color">Color</string>
+    <string name="in_progress_automatic_accent">Automatic (theme accent)</string>
+    <string name="in_progress_strengths">Strengths of your pick</string>
+    <string name="in_progress_accent_shades">Theme accent and shades</string>
+    <string name="in_progress_apply">Apply</string>
+    <string name="in_progress_tap_swatches">Tap a swatch to use it</string>
     <string name="clear_reading_positions">Clear saved reading positions</string>
     <string name="clear_reading_positions_desc">Forget where you left off in every article</string>
     <string name="clear_reading_positions_tips">This forgets every saved article reading position. This cannot be undone.</string>
