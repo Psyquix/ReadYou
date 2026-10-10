@@ -84,6 +84,7 @@ import me.ash.reader.ui.component.swipe.SwipeAction
 import me.ash.reader.ui.component.swipe.SwipeableActionsBox
 import me.ash.reader.ui.ext.requiresBidi
 import me.ash.reader.ui.ext.surfaceColorAtElevation
+import me.ash.reader.ui.page.home.reading.readingBarRect
 import me.ash.reader.ui.page.settings.color.flow.generateArticleWithFeedPreview
 import me.ash.reader.ui.theme.Shape20
 import me.ash.reader.ui.theme.applyTextDirection
@@ -167,18 +168,22 @@ fun ArticleItem(
                 )
                 // Fork patch 8: the bar is drawn post-measure, so it always
                 // knows the row height (a layout child with fractional height
-                // collapses to zero in this wrap-content row). Pure insertion.
+                // collapses to zero in this wrap-content row). Geometry comes
+                // from readingBarRect: gutter lane, vertically centered.
+                // Pure insertion.
                 .drawBehind {
                     if (isReading) {
-                        val barHeight = size.height * 0.65f
+                        val bar =
+                            readingBarRect(
+                                boxWidth = size.width,
+                                boxHeight = size.height,
+                                gutterInsetPx = 10.dp.toPx(),
+                                barWidthPx = 3.dp.toPx(),
+                            )
                         drawRoundRect(
                             color = barColor,
-                            topLeft =
-                                Offset(
-                                    2.dp.toPx(),
-                                    (size.height - barHeight) / 2f,
-                                ),
-                            size = Size(3.dp.toPx(), barHeight),
+                            topLeft = Offset(bar.left, bar.top),
+                            size = Size(bar.width, bar.height),
                             cornerRadius = CornerRadius(2.dp.toPx()),
                         )
                     }

@@ -45,6 +45,34 @@ fun inProgressIdsFromKeys(keyNames: Set<String>): Set<String> =
             .takeIf { it != name && it.isNotEmpty() }
     }.toSet()
 
+/** Where the in-progress bar is drawn, in pixels. */
+data class BarRect(
+    val left: Float,
+    val top: Float,
+    val width: Float,
+    val height: Float,
+)
+
+/**
+ * Fork patch 8: the bar lives in the padding gutter left of the content, so
+ * it can never slide under the feed icon, and stays vertically centered.
+ */
+fun readingBarRect(
+    boxWidth: Float,
+    boxHeight: Float,
+    gutterInsetPx: Float,
+    barWidthPx: Float,
+    fraction: Float = 0.65f,
+): BarRect {
+    val height = boxHeight * fraction
+    return BarRect(
+        left = -gutterInsetPx,
+        top = (boxHeight - height) / 2f,
+        width = barWidthPx,
+        height = height,
+    )
+}
+
 /**
  * Clamp a saved offset into a laid-out scroller. Null when there is nothing
  * to do ([saved] at top) or nothing to clamp to ([maxValue] unmeasured —
