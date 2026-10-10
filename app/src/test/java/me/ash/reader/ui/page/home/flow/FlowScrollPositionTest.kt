@@ -139,6 +139,16 @@ class FlowScrollPositionTest {
     }
 
     @Test
+    fun `legacy entry without next id never matches date headers`() {
+        // Headers resolve to a null id; a null next id must not match them or
+        // every legacy restore would jump to the top.
+        val items = listOf(header(), article("a"), article("b"))
+        val saved = FlowScrollPosition(articleId = "deleted", index = 2, offset = 0)
+
+        assertEquals(2, findRestoreIndex(items, saved))
+    }
+
+    @Test
     fun `key parses back to its feed target`() {
         assertEquals(
             FlowScrollTarget(accountId = 1, filterIndex = 1, feedId = "feed-a", groupId = null),

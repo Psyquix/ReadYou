@@ -72,10 +72,12 @@ fun flowScrollKey(
 fun findRestoreIndex(items: List<ArticleFlowItem>, saved: FlowScrollPosition): Int {
     if (items.isEmpty()) return 0
     var nextIndex = -1
+    val nextId = saved.nextArticleId
     items.forEachIndexed { i, item ->
         val id = (item as? ArticleFlowItem.Article)?.articleWithFeed?.article?.id
         if (id == saved.articleId) return i
-        if (nextIndex == -1 && id == saved.nextArticleId) nextIndex = i
+        // nextId null (legacy entries) must never match header nulls.
+        if (nextIndex == -1 && nextId != null && id == nextId) nextIndex = i
     }
     if (nextIndex != -1) return nextIndex
     return saved.index.coerceIn(0, items.size - 1)
