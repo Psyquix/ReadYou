@@ -275,12 +275,18 @@ fun ReadingPage(
                                 }
 
                                 // Fork patch 7: restore the saved reading position,
-                                // once per article. Both renderers move the outer
-                                // scroll while reading, so Native restores its list
-                                // and WebView restores the outer scroll. Polls wait
+                                // once per article, unread articles only (a read
+                                // article always starts fresh; stale spots are
+                                // dropped). Both renderers move the outer scroll
+                                // while reading, so Native restores its list and
+                                // WebView restores the outer scroll. Polls wait
                                 // for layout and abort if the user moved. Pure insertion.
-                                LaunchedEffect(readerState.articleId) {
+                                LaunchedEffect(readerState.articleId, readingUiState.isUnread) {
                                     val id = readerState.articleId ?: return@LaunchedEffect
+                                    if (!readingUiState.isUnread) {
+                                        viewModel.clearReadingPosition(id)
+                                        return@LaunchedEffect
+                                    }
                                     val saved = viewModel.loadReadingPosition(id)
                                         ?: return@LaunchedEffect
                                     if (
@@ -321,13 +327,19 @@ fun ReadingPage(
                                 }
 
                                 // Fork patch 7: save the reading position while
-                                // reading (debounced); back at the top clears it.
-                                // Pure insertion.
-                                LaunchedEffect(readerState.articleId) {
+                                // reading (debounced) unread articles only; back at
+                                // the top, or newly read, clears it. Pure insertion.
+                                LaunchedEffect(readerState.articleId, readingUiState.isUnread) {
                                     if (
                                         readerRenderer !=
                                             ReadingRendererPreference.NativeComponent
                                     ) {
+                                        return@LaunchedEffect
+                                    }
+                                    if (!readingUiState.isUnread) {
+                                        readerState.articleId?.let {
+                                            viewModel.clearReadingPosition(it)
+                                        }
                                         return@LaunchedEffect
                                     }
                                     snapshotFlow {
@@ -353,12 +365,18 @@ fun ReadingPage(
                                 // Fork patch 7: same for the WebView renderer, via
                                 // the outer scroll (the WebView body is laid out at
                                 // full height, so its own scroll never moves).
-                                // Pure insertion.
-                                LaunchedEffect(readerState.articleId) {
+                                // Unread articles only. Pure insertion.
+                                LaunchedEffect(readerState.articleId, readingUiState.isUnread) {
                                     if (
                                         readerRenderer !=
                                             ReadingRendererPreference.WebView
                                     ) {
+                                        return@LaunchedEffect
+                                    }
+                                    if (!readingUiState.isUnread) {
+                                        readerState.articleId?.let {
+                                            viewModel.clearReadingPosition(it)
+                                        }
                                         return@LaunchedEffect
                                     }
                                     snapshotFlow { scrollState.value }.collectLatest { v ->
