@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.ArrowDownward
@@ -313,6 +315,8 @@ private const val SwipeActionDelay = 300L
 fun SwipeableArticleItem(
     articleWithFeed: ArticleWithFeed,
     isUnread: Boolean = articleWithFeed.article.isUnread,
+    // Fork patch 8: in-progress accent bar. Defaulted: upstream untouched.
+    isReading: Boolean = false,
     articleListTonalElevation: Int = 0,
     onClick: (ArticleWithFeed) -> Unit = {},
     isSwipeEnabled: () -> Boolean = { false },
@@ -368,6 +372,18 @@ fun SwipeableArticleItem(
                 onClick = onClick,
                 onLongClick = onLongClick,
             )
+            // Fork patch 8: in-progress accent bar. Pure insertion.
+            if (isReading) {
+                Box(
+                    modifier =
+                        Modifier.align(Alignment.CenterStart)
+                            .padding(start = 2.dp)
+                            .width(3.dp)
+                            .fillMaxHeight(0.65f)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(MaterialTheme.colorScheme.primary),
+                )
+            }
             with(articleWithFeed.article) {
                 if (isMenuEnabled) {
                     AnimatedDropdownMenu(

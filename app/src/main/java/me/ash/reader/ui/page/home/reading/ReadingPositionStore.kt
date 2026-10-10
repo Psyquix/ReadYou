@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.IOException
 import javax.inject.Inject
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import me.ash.reader.domain.repository.ArticleDao
@@ -45,6 +47,19 @@ constructor(
     suspend fun clearAll() {
         context.readingPositionStore.edit { it.clear() }
     }
+
+    /**
+     * Fork patch 8: live set of article ids holding a saved spot, for the
+     * in-progress accent bar. Emits empty on read failure.
+     */
+    fun savedIdsFlow(): kotlinx.coroutines.flow.Flow<Set<String>> =
+        context.readingPositionStore.data
+            .map { prefs ->
+                inProgressIdsFromKeys(prefs.asMap().keys.map { it.name }.toSet())
+            }
+            .catch { e ->
+                if (e is IOException) emit(emptySet()) else throw e
+            }
 
     /**
      * Drops entries whose articles no longer exist. Runs after every save, on

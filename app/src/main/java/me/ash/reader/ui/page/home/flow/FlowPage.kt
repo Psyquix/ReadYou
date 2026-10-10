@@ -382,6 +382,8 @@ fun FlowPage(
     }
 
     val isSyncing = viewModel.isSyncingFlow.collectAsStateValue()
+    // Fork patch 8: ids with a saved reading spot, for the accent bar.
+    val inProgressIds = viewModel.inProgressIds.collectAsStateValue()
 
     // Fork patch 4: restore the saved position once items load, and again after
     // a sync (upstream's scroll-to-top above is left untouched; restore simply
@@ -798,6 +800,7 @@ fun FlowPage(
                             ArticleList(
                                 pagingItems = pagingItems,
                                 diffMap = viewModel.diffMapHolder.diffMap,
+                                inProgressIds = inProgressIds,
                                 isShowFeedIcon = articleListFeedIcon.value,
                                 isShowStickyHeader = articleListDateStickyHeader.value,
                                 articleListTonalElevation = articleListTonalElevation.value,
