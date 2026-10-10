@@ -336,6 +336,11 @@ constructor(
 
             // Fork patch 5: with mark-at-end on, opening only loads; the
             // end-of-content effect marks read instead. One-line exception.
+            // DEBUG PROBE ONLY (never merge).
+            android.util.Log.d(
+                "ProbeUnread",
+                "initData $articleId vmSetting=${settingsProvider.settings.markAsReadAtEnd.value}",
+            )
             if (!settingsProvider.settings.markAsReadAtEnd.value &&
                 diffMapHolder.checkIfUnread(item)
             ) {

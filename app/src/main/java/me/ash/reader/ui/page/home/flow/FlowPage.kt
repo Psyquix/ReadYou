@@ -384,6 +384,10 @@ fun FlowPage(
     val isSyncing = viewModel.isSyncingFlow.collectAsStateValue()
     // Fork patch 8: ids with a saved reading spot, for the accent bar.
     val inProgressIds = viewModel.inProgressIds.collectAsStateValue()
+    // DEBUG PROBE ONLY (never merge).
+    LaunchedEffect(inProgressIds) {
+        android.util.Log.d("ProbeUnread", "inProgressIds=$inProgressIds")
+    }
 
     // Fork patch 4: restore the saved position once items load, and again after
     // a sync (upstream's scroll-to-top above is left untouched; restore simply

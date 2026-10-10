@@ -283,6 +283,11 @@ fun ReadingPage(
                                 // for layout and abort if the user moved. Pure insertion.
                                 LaunchedEffect(readerState.articleId, readingUiState.isUnread) {
                                     val id = readerState.articleId ?: return@LaunchedEffect
+                                    // DEBUG PROBE ONLY (never merge).
+                                    android.util.Log.d(
+                                        "ProbeUnread",
+                                        "restore effect id=$id uiUnread=${readingUiState.isUnread}",
+                                    )
                                     if (!readingUiState.isUnread) {
                                         viewModel.clearReadingPosition(id)
                                         return@LaunchedEffect
