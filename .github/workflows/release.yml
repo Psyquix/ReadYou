@@ -90,6 +90,7 @@ jobs:
             TAG="v${VER}"
             NOTES="${{ inputs.changelog }}
 
+            ---
             Based on upstream ReadYou ${UPSTREAM_BASE} (Ashinch/ReadYou)."
           else
             TAG="v${VER}+psyquix.${{ github.run_number }}"
@@ -106,6 +107,7 @@ jobs:
 
             Unit tests run before the APK is built and gate this release.
 
+            ---
             Based on upstream ReadYou ${UPSTREAM_BASE} (Ashinch/ReadYou)."
           fi
           if gh release view "$TAG" -R "${{ github.repository }}" >/dev/null 2>&1; then
