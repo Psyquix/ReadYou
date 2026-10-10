@@ -66,7 +66,8 @@ designed to survive `track-upstream` merges without manual work.
    unread flag, which also lied to the BottomBar, now reports the true state
    — third `app/` exception.) Stale entries are pruned on save against the
    article table, and Settings → Interaction offers a confirmed wipe of the
-   file.
+   file. The reader's mark-as-read button also forgets the spot, and the
+   article long-press menu offers Remove progress while a spot exists.
 8. **In-progress accent bar** (`ArticleItem` + live id set from
    `ReadingPositionStore`): unread articles holding a saved spot get a short
    primary bar at the row's start edge. Shown only while still unread, so

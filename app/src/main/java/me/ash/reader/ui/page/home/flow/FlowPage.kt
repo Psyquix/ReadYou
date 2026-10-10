@@ -262,6 +262,11 @@ fun FlowPage(
         }
     }
 
+    // Fork patch 7: per-article progress removal from the long-press menu.
+    val onRemoveProgress: ((ArticleWithFeed) -> Unit)? = remember {
+        { articleWithFeed -> viewModel.clearReadingPosition(articleWithFeed.article.id) }
+    }
+
     LaunchedEffect(onSearch) {
         if (!onSearch) {
             keyboardController?.hide()
@@ -843,6 +848,7 @@ fun FlowPage(
                                 onMarkBelowAsRead = onMarkBelowAsRead,
                                 onMarkAboveAsUnread = onMarkAboveAsUnread,
                                 onMarkBelowAsUnread = onMarkBelowAsUnread,
+                                onRemoveProgress = onRemoveProgress,
                                 onShare = onShare,
                             )
                             item {

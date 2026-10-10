@@ -512,6 +512,10 @@ constructor(
     fun updateReadStatus(isUnread: Boolean) {
         readingUiState.value.articleWithFeed?.let {
             diffMapHolder.updateDiff(it, isUnread = isUnread)
+            // Fork patch 7: the mark-as-read button also forgets the spot.
+            if (!isUnread) {
+                clearReadingPosition(it.article.id)
+            }
         }
         _readingUiState.update {
             it.copy(isUnread = diffMapHolder.checkIfUnread(it.articleWithFeed!!))

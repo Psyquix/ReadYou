@@ -38,6 +38,8 @@ fun LazyListScope.ArticleList(
     onMarkBelowAsRead: ((ArticleWithFeed) -> Unit)? = null,
     onMarkAboveAsUnread: ((ArticleWithFeed) -> Unit)? = null,
     onMarkBelowAsUnread: ((ArticleWithFeed) -> Unit)? = null,
+    // Fork patch 7: per-article progress removal. Defaulted: upstream untouched.
+    onRemoveProgress: ((ArticleWithFeed) -> Unit)? = null,
     onShare: ((ArticleWithFeed) -> Unit)? = null,
 ) {
     // Fork patch 3: "mark above/below as unread" is only worth offering when there is
@@ -93,6 +95,7 @@ fun LazyListScope.ArticleList(
                             if (firstReadIndex in 0 until index) onMarkAboveAsUnread else null,
                         onMarkBelowAsUnread =
                             if (lastReadIndex > index) onMarkBelowAsUnread else null,
+                        onRemoveProgress = onRemoveProgress,
                         onShare = onShare,
                     )
                 }
@@ -139,6 +142,7 @@ fun LazyListScope.ArticleList(
                                 if (firstReadIndex in 0 until index) onMarkAboveAsUnread else null,
                             onMarkBelowAsUnread =
                                 if (lastReadIndex > index) onMarkBelowAsUnread else null,
+                            onRemoveProgress = onRemoveProgress,
                             onShare = onShare,
                         )
                     }
