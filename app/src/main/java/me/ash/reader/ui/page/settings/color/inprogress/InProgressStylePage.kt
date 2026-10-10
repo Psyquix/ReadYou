@@ -1,5 +1,6 @@
 package me.ash.reader.ui.page.settings.color.inprogress
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -79,6 +81,9 @@ fun InProgressStylePage(
     }
     var pickedHue by remember { mutableFloatStateOf(214f) }
     var pickedSat by remember { mutableFloatStateOf(0.85f) }
+    val themeArgb = themePrimary.toArgb()
+    val strengths = highlightStrengths(pickedArgb)
+    val shades = accentShades(themeArgb)
 
     RYScaffold(
         containerColor = MaterialTheme.colorScheme.surface onLight MaterialTheme.colorScheme.inverseOnSurface,
@@ -130,6 +135,39 @@ fun InProgressStylePage(
                             )
                         }
                     }
+                    SwatchCaption(text = stringResource(R.string.in_progress_current))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(48.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color(pickedArgb),
+                        ) {}
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "#" + (pickedArgb and 0xFFFFFF)
+                                    .toString(16)
+                                    .uppercase()
+                                    .padStart(6, '0'),
+                                style = MaterialTheme.typography.titleMedium,
+                            )
+                            Text(
+                                text =
+                                    if (colorPref.value == COLOR_AUTO) {
+                                        stringResource(R.string.in_progress_automatic_accent)
+                                    } else {
+                                        stringResource(R.string.in_progress_custom)
+                                    },
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                     SpectrumPicker(
                         hue = pickedHue,
                         saturation = pickedSat,
@@ -141,14 +179,14 @@ fun InProgressStylePage(
                     )
                     SwatchCaption(text = stringResource(R.string.in_progress_strengths))
                     SwatchRow(
-                        colors = highlightStrengths(pickedArgb),
-                        selected = null,
+                        colors = strengths,
+                        selected = selectedSwatch(pickedArgb, strengths),
                         onSelect = { pickedArgb = it },
                     )
                     SwatchCaption(text = stringResource(R.string.in_progress_accent_shades))
                     SwatchRow(
-                        colors = accentShades(themePrimary.toArgb()),
-                        selected = null,
+                        colors = shades,
+                        selected = selectedSwatch(pickedArgb, shades),
                         onSelect = { pickedArgb = it },
                     )
                     Row(
@@ -222,6 +260,12 @@ private fun SwatchRow(
                     .clip(RoundedCornerShape(10.dp))
                     .clickable { onSelect(argb) },
                 color = Color(argb),
+                border =
+                    if (selected == argb) {
+                        BorderStroke(2.dp, Color.White)
+                    } else {
+                        null
+                    },
             ) {
                 if (selected == argb) {
                     Icon(

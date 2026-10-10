@@ -359,6 +359,8 @@
     <string name="in_progress_strengths">Strengths of your pick</string>
     <string name="in_progress_accent_shades">Theme accent and shades</string>
     <string name="in_progress_apply">Apply</string>
+    <string name="in_progress_current">Current</string>
+    <string name="in_progress_custom">Custom</string>
     <string name="in_progress_tap_swatches">Tap a swatch to use it</string>
     <string name="clear_reading_positions">Clear saved reading positions</string>
     <string name="clear_reading_positions_desc">Forget where you left off in every article</string>

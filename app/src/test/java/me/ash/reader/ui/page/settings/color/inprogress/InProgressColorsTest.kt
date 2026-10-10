@@ -1,6 +1,7 @@
 package me.ash.reader.ui.page.settings.color.inprogress
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -64,5 +65,18 @@ class InProgressColorsTest {
     fun `auto resolves to the theme accent`() {
         assertEquals(0xFF123456.toInt(), resolveReadingColorArgb(COLOR_AUTO, 0xFF123456.toInt()))
         assertEquals(0xFFABCDEF.toInt(), resolveReadingColorArgb(0xFFABCDEF.toInt(), 0xFF123456.toInt()))
+    }
+
+    @Test
+    fun `matching swatch is selected`() {
+        val row = listOf(0xFF111111.toInt(), 0xFF222222.toInt())
+
+        assertEquals(0xFF222222.toInt(), selectedSwatch(0xFF222222.toInt(), row))
+    }
+
+    @Test
+    fun `off-row color selects nothing`() {
+        assertNull(selectedSwatch(0xFF333333.toInt(), listOf(0xFF111111.toInt())))
+        assertNull(selectedSwatch(0xFF111111.toInt(), emptyList()))
     }
 }
