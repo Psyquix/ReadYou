@@ -145,8 +145,11 @@ release-notes footer names the right upstream version.
 - `build_commit.yaml` (upstream file, lightly edited): pinned to
   `ubuntu-24.04` and Node-24-ready actions (`checkout@v4`, `setup-java@v4`,
   `gradle/actions/setup-gradle@v4`, `upload-artifact@v5`), plus a
-  `testGithubReleaseUnitTest` step. `release` only fires on a green
-  `Build Commit`, so **unit tests are a release precondition**. This matters
+  `testGithubReleaseUnitTest` step. Release APK assembly runs on `main`
+  only — branches validate compile + tests (roughly twice as fast), and a
+  branch that breaks the release build is caught by the main build after
+  merge. `release` only fires on a green `Build Commit`, so **unit tests are
+  a release precondition**. This matters
   because `testing.yml` is `pull_request`-only and would otherwise never run on
   an automated upstream merge — a merge that compiles but is semantically wrong
   would ship. Add a test with every patch; this gate is what runs it.

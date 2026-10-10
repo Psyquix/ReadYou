@@ -47,9 +47,15 @@ jobs:
                       app/build/reports/tests/testGithubReleaseUnitTest/
                       app/build/test-results/testGithubReleaseUnitTest/
 
+            # Release APKs are only cut from main (release dispatch downloads
+            # the main-build artifact), so branches skip the slow R8 assemble
+            # and validate compile + tests only. A branch that breaks the
+            # release build is caught by the main build after merge.
             - run: ./gradlew assembleGithubRelease
+              if: github.ref == 'refs/heads/main'
 
             - uses: actions/upload-artifact@v5
+              if: github.ref == 'refs/heads/main'
               with:
                   name: ReadYou-GitHub-Build-${{ github.sha }}
                   path: app/build/outputs/apk/github/release/*.apk
