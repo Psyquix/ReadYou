@@ -55,34 +55,22 @@ class MarkReadAtEndTest {
     }
 
     @Test
-    fun `webview at bottom is at end`() {
-        assertTrue(isWebViewContentAtEnd(scrollY = 1000, scale = 1f, contentHeight = 2000, viewHeight = 1000))
+    fun `outer scroll at bottom is at end`() {
+        assertTrue(isReaderScrollAtEnd(value = 1000, maxValue = 1000))
     }
 
     @Test
-    fun `webview within tolerance is at end`() {
-        assertTrue(isWebViewContentAtEnd(scrollY = 995, scale = 1f, contentHeight = 2000, viewHeight = 1000, tolerancePx = 8))
+    fun `outer scroll within tolerance is at end`() {
+        assertTrue(isReaderScrollAtEnd(value = 960, maxValue = 1000, tolerance = 50))
     }
 
     @Test
-    fun `webview mid content is not at end`() {
-        assertFalse(isWebViewContentAtEnd(scrollY = 500, scale = 1f, contentHeight = 2000, viewHeight = 1000))
+    fun `outer scroll mid content is not at end`() {
+        assertFalse(isReaderScrollAtEnd(value = 500, maxValue = 1000))
     }
 
     @Test
-    fun `webview content scale is applied`() {
-        assertTrue(isWebViewContentAtEnd(scrollY = 1500, scale = 1.5f, contentHeight = 2000, viewHeight = 1500))
-        assertFalse(isWebViewContentAtEnd(scrollY = 500, scale = 1.5f, contentHeight = 2000, viewHeight = 1500))
-    }
-
-    @Test
-    fun `webview unlaid-out or unloaded is never at end`() {
-        assertFalse(isWebViewContentAtEnd(scrollY = 0, scale = 1f, contentHeight = 2000, viewHeight = 0))
-        assertFalse(isWebViewContentAtEnd(scrollY = 0, scale = 1f, contentHeight = 0, viewHeight = 1000))
-    }
-
-    @Test
-    fun `webview short content is at end once laid out`() {
-        assertTrue(isWebViewContentAtEnd(scrollY = 0, scale = 1f, contentHeight = 500, viewHeight = 1000))
+    fun `outer scroll unmeasured is never at end`() {
+        assertFalse(isReaderScrollAtEnd(value = 0, maxValue = 0))
     }
 }
