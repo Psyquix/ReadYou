@@ -99,4 +99,69 @@ class FlowScrollPositionTest {
         assertEquals(2, findRestoreIndex(items, saved))
         assertEquals(0, findRestoreIndex(emptyList(), saved))
     }
+
+    @Test
+    fun `legacy positions without next id still decode`() {
+        val pos = FlowScrollPosition(articleId = "abc123", index = 42, offset = -200)
+        assertEquals(null, decodeFlowScrollPosition(pos.encode())?.nextArticleId)
+    }
+
+    @Test
+    fun `position with next id encodes and decodes`() {
+        val pos = FlowScrollPosition(articleId = "a", index = 5, offset = 10, nextArticleId = "b")
+        assertEquals(pos, decodeFlowScrollPosition(pos.encode()))
+    }
+
+    @Test
+    fun `restore lands on the next article when the anchor is gone`() {
+        // The anchor was read and left the unread list; the saved next article
+        // is exactly where reading continues.
+        val items = listOf(article("fresh"), article("next"), article("old"))
+        val saved = FlowScrollPosition(articleId = "read-gone", index = 0, offset = 0, nextArticleId = "next")
+
+        assertEquals(1, findRestoreIndex(items, saved))
+    }
+
+    @Test
+    fun `restore prefers the anchor over the next id`() {
+        val items = listOf(article("anchor"), article("next"))
+        val saved = FlowScrollPosition(articleId = "anchor", index = 0, offset = 0, nextArticleId = "next")
+
+        assertEquals(0, findRestoreIndex(items, saved))
+    }
+
+    @Test
+    fun `restore falls back to clamped index when both ids are gone`() {
+        val items = listOf(article("a"), article("b"))
+        val saved = FlowScrollPosition(articleId = "gone", index = 99, offset = 0, nextArticleId = "also-gone")
+
+        assertEquals(1, findRestoreIndex(items, saved))
+    }
+
+    @Test
+    fun `key parses back to its feed target`() {
+        assertEquals(
+            FlowScrollTarget(accountId = 1, filterIndex = 1, feedId = "feed-a", groupId = null),
+            parseFlowScrollTarget("flow_scroll_position_" + flowScrollKey(1, 1, "feed-a", null, false)),
+        )
+    }
+
+    @Test
+    fun `key parses back to its group and global targets`() {
+        assertEquals(
+            FlowScrollTarget(accountId = 2, filterIndex = 0, feedId = null, groupId = "group-a"),
+            parseFlowScrollTarget("flow_scroll_position_" + flowScrollKey(2, 0, null, "group-a", true)),
+        )
+        assertEquals(
+            FlowScrollTarget(accountId = 1, filterIndex = 2, feedId = null, groupId = null),
+            parseFlowScrollTarget("flow_scroll_position_" + flowScrollKey(1, 2, null, null, false)),
+        )
+    }
+
+    @Test
+    fun `malformed keys parse to null`() {
+        assertNull(parseFlowScrollTarget("flow_scroll_position_broken"))
+        assertNull(parseFlowScrollTarget("other_prefix_flowscroll|acct=1|filter=1|feed=a|group=-|sort=0"))
+        assertNull(parseFlowScrollTarget("flow_scroll_position_flowscroll|acct=x|filter=1|feed=a|group=-|sort=0"))
+    }
 }
