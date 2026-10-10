@@ -3,12 +3,9 @@ package me.ash.reader.ui.component.webview
 import android.util.Log
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -16,7 +13,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import kotlinx.coroutines.delay
 import me.ash.reader.infrastructure.preference.LocalOpenLink
 import me.ash.reader.infrastructure.preference.LocalOpenLinkSpecificBrowser
 import me.ash.reader.infrastructure.preference.LocalReadingBoldCharacters
@@ -44,10 +40,6 @@ fun RYWebView(
     content: String,
     refererDomain: String? = null,
     onImageClick: ((imgUrl: String, altText: String) -> Unit)? = null,
-    // Fork patch 7: per-article reading positions. Both defaulted to null,
-    // so upstream behaviour is untouched without them.
-    restoredScrollY: Int? = null,
-    onScrollYChanged: ((scrollY: Int) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val maxWidth = LocalConfiguration.current.screenWidthDp.dp.value
@@ -147,26 +139,4 @@ fun RYWebView(
             }
         },
     )
-
-    // Fork patch 7: per-article reading positions. Pure insertion.
-    val latestScrollY by rememberUpdatedState(onScrollYChanged)
-    DisposableEffect(webView) {
-        webView.setOnScrollChangeListener { _, _, scrollY, _, _ ->
-            latestScrollY?.invoke(scrollY)
-        }
-        onDispose { webView.setOnScrollChangeListener(null) }
-    }
-    LaunchedEffect(content, restoredScrollY) {
-        val targetY = restoredScrollY ?: return@LaunchedEffect
-        if (targetY <= 0) return@LaunchedEffect
-        // One-shot restore: wait until laid out, abort if the user moved.
-        repeat(40) {
-            if (webView.scrollY != 0) return@LaunchedEffect
-            if (webView.contentHeight > 0) {
-                webView.scrollTo(0, targetY)
-                return@LaunchedEffect
-            }
-            delay(250)
-        }
-    }
 }

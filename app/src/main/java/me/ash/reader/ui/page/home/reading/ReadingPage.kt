@@ -209,14 +209,6 @@ fun ReadingPage(
 
                                 val scope = rememberCoroutineScope()
 
-                                // Fork patch 7: per-article reading positions. Pure insertion.
-                                var restoredWebScrollY by
-                                    remember(readerState.articleId) {
-                                        mutableStateOf<Int?>(null)
-                                    }
-                                var webScrollY by
-                                    remember(readerState.articleId) { mutableStateOf(-1) }
-
                                 LaunchedEffect(bringToTop) {
                                     if (bringToTop) {
                                         scope
@@ -283,7 +275,10 @@ fun ReadingPage(
                                 }
 
                                 // Fork patch 7: restore the saved reading position,
-                                // once per article. Pure insertion.
+                                // once per article. Both renderers move the outer
+                                // scroll while reading, so Native restores its list
+                                // and WebView restores the outer scroll. Polls wait
+                                // for layout and abort if the user moved. Pure insertion.
                                 LaunchedEffect(readerState.articleId) {
                                     val id = readerState.articleId ?: return@LaunchedEffect
                                     val saved = viewModel.loadReadingPosition(id)
@@ -292,14 +287,36 @@ fun ReadingPage(
                                         readerRenderer ==
                                             ReadingRendererPreference.NativeComponent
                                     ) {
-                                        if (
-                                            (saved.index > 0 || saved.offset > 0) &&
-                                                listState.firstVisibleItemIndex == 0
-                                        ) {
-                                            listState.scrollToItem(saved.index, saved.offset)
+                                        if (saved.index <= 0 && saved.offset <= 0) {
+                                            return@LaunchedEffect
                                         }
-                                    } else if (saved.scrollY > 0) {
-                                        restoredWebScrollY = saved.scrollY
+                                        repeat(40) {
+                                            if (listState.firstVisibleItemIndex != 0) {
+                                                return@LaunchedEffect
+                                            }
+                                            if (listState.layoutInfo.totalItemsCount > saved.index) {
+                                                listState.scrollToItem(saved.index, saved.offset)
+                                                return@LaunchedEffect
+                                            }
+                                            delay(250)
+                                        }
+                                    } else {
+                                        if (saved.scrollY <= 0) return@LaunchedEffect
+                                        repeat(60) {
+                                            if (scrollState.value != 0) {
+                                                return@LaunchedEffect
+                                            }
+                                            val target =
+                                                coerceRestoreTarget(
+                                                    saved.scrollY,
+                                                    scrollState.maxValue,
+                                                )
+                                            if (target != null) {
+                                                scrollState.scrollTo(target)
+                                                return@LaunchedEffect
+                                            }
+                                            delay(250)
+                                        }
                                     }
                                 }
 
@@ -333,8 +350,10 @@ fun ReadingPage(
                                     }
                                 }
 
-                                // Fork patch 7: same for the WebView's own scroll
-                                // offset, reported by RYWebView. Pure insertion.
+                                // Fork patch 7: same for the WebView renderer, via
+                                // the outer scroll (the WebView body is laid out at
+                                // full height, so its own scroll never moves).
+                                // Pure insertion.
                                 LaunchedEffect(readerState.articleId) {
                                     if (
                                         readerRenderer !=
@@ -342,19 +361,18 @@ fun ReadingPage(
                                     ) {
                                         return@LaunchedEffect
                                     }
-                                    snapshotFlow { webScrollY }.collectLatest { y ->
+                                    snapshotFlow { scrollState.value }.collectLatest { v ->
                                         delay(500)
                                         val id = readerState.articleId
                                             ?: return@collectLatest
-                                        if (y < 0) return@collectLatest
-                                        if (y <= 0) {
+                                        if (v <= 0) {
                                             viewModel.clearReadingPosition(id)
                                         } else {
                                             viewModel.saveReadingPosition(
                                                 articleId = id,
                                                 index = 0,
                                                 offset = 0,
-                                                scrollY = y,
+                                                scrollY = v,
                                             )
                                         }
                                     }
@@ -401,8 +419,6 @@ fun ReadingPage(
                                                 currentImageData = ImageData(imgUrl, altText)
                                                 showFullScreenImageViewer = true
                                             },
-                                            restoredScrollY = restoredWebScrollY,
-                                            onScrollYChanged = { webScrollY = it },
                                         )
                                         PullToLoadIndicator(
                                             state = state,

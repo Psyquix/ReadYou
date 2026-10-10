@@ -29,3 +29,13 @@ fun decodeReadingPosition(raw: String?): ReadingPosition? {
 /** Ids worth dropping: saved but no longer in the database. */
 fun positionsToPrune(savedIds: Set<String>, existingIds: Set<String>): Set<String> =
     savedIds - existingIds
+
+/**
+ * Clamp a saved offset into a laid-out scroller. Null when there is nothing
+ * to do ([saved] at top) or nothing to clamp to ([maxValue] unmeasured —
+ * the caller polls). User movement is checked by the caller.
+ */
+fun coerceRestoreTarget(saved: Int, maxValue: Int): Int? {
+    if (saved <= 0 || maxValue <= 0) return null
+    return saved.coerceIn(0, maxValue)
+}

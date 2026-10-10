@@ -69,4 +69,16 @@ class ReadingPositionTest {
             positionsToPrune(savedIds = setOf("a", "b"), existingIds = emptySet()),
         )
     }
+
+    @Test
+    fun `restore target clamps into the laid-out range`() {
+        assertEquals(800, coerceRestoreTarget(saved = 800, maxValue = 1000))
+        assertEquals(1000, coerceRestoreTarget(saved = 1500, maxValue = 1000))
+    }
+
+    @Test
+    fun `restore target is null at top or when unmeasured`() {
+        assertNull(coerceRestoreTarget(saved = 0, maxValue = 1000))
+        assertNull(coerceRestoreTarget(saved = 800, maxValue = 0))
+    }
 }
