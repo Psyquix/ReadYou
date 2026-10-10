@@ -48,6 +48,9 @@ fun Content(
     isLoading: Boolean,
     contentPadding: PaddingValues = PaddingValues(),
     onImageClick: ((imgUrl: String, altText: String) -> Unit)? = null,
+    // Fork patch 7: per-article reading positions (defaulted: upstream untouched).
+    restoredScrollY: Int? = null,
+    onScrollYChanged: ((scrollY: Int) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val subheadUpperCase = LocalReadingSubheadUpperCase.current
@@ -100,6 +103,8 @@ fun Content(
                                 content = content,
                                 refererDomain = link.extractDomain(),
                                 onImageClick = onImageClick,
+                                restoredScrollY = restoredScrollY,
+                                onScrollYChanged = onScrollYChanged,
                             )
                             Spacer(modifier = Modifier.height(128.dp))
                             Spacer(

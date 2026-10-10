@@ -24,6 +24,12 @@ import kotlinx.coroutines.withContext
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
+// Fork patch 7: per-article reading positions live in their own file, loaded
+// lazily on first access — main settings and startup are untouched.
+val Context.readingPositionStore: DataStore<Preferences> by preferencesDataStore(
+    name = ReadingPositionStore.FILE_NAME
+)
+
 val Context.skipVersionNumber: String
     get() = this.dataStore.get(DataStoreKey.skipVersionNumber) ?: ""
 val Context.isFirstLaunch: Boolean

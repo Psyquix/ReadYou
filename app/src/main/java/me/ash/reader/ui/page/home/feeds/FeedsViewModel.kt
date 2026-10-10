@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import me.ash.reader.R
 import me.ash.reader.domain.model.account.Account
 import me.ash.reader.domain.model.general.Filter
@@ -57,6 +58,7 @@ class FeedsViewModel @Inject constructor(
     private val diffMapHolder: DiffMapHolder,
     private val filterStateUseCase: FilterStateUseCase,
     private val groupWithFeedsListUseCase: GroupWithFeedsListUseCase,
+    private val readingPositionStore: me.ash.reader.ui.page.home.reading.ReadingPositionStore,
 ) : ViewModel() {
 
     private val _feedsUiState =
@@ -77,6 +79,16 @@ class FeedsViewModel @Inject constructor(
     }
 
     fun commitDiffs() = diffMapHolder.commitDiffsToDb()
+
+    // Fork patch 7: wipes all saved reading positions.
+    fun clearReadingPositions(onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            withContext(ioDispatcher) {
+                readingPositionStore.clearAll()
+            }
+            onDone()
+        }
+    }
 
     fun changeFilter(filterState: FilterState) {
         filterStateUseCase.updateFilterState(filterState)

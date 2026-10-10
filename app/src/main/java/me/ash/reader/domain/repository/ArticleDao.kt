@@ -890,6 +890,14 @@ interface ArticleDao {
     )
     fun queryLatestUnreadArticleFlow(accountId: Int, limit: Int): Flow<List<ArticleWithFeed>>
 
+    @Query(
+        """
+        SELECT id FROM article
+        WHERE id IN (:ids)
+        """
+    )
+    suspend fun queryExistingIds(ids: Set<String>): List<String>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(vararg article: Article)
 

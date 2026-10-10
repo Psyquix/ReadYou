@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import me.ash.reader.R
 import me.ash.reader.infrastructure.preference.InitialFilterPreference
 import me.ash.reader.infrastructure.preference.InitialPagePreference
@@ -45,17 +48,22 @@ import me.ash.reader.infrastructure.preference.SwipeStartActionPreference
 import me.ash.reader.ui.component.base.DisplayText
 import me.ash.reader.ui.component.base.FeedbackIconButton
 import me.ash.reader.ui.component.base.RYScaffold
+import me.ash.reader.ui.component.base.RYDialog
 import me.ash.reader.ui.component.base.RYSwitch
 import me.ash.reader.ui.component.base.RadioDialog
 import me.ash.reader.ui.component.base.RadioDialogOption
 import me.ash.reader.ui.component.base.Subtitle
 import me.ash.reader.ui.ext.getBrowserAppList
+import me.ash.reader.ui.ext.showToast
+import me.ash.reader.ui.page.home.feeds.FeedsViewModel
 import me.ash.reader.ui.page.settings.SettingItem
 import me.ash.reader.ui.theme.palette.onLight
 
 @Composable
 fun InteractionPage(
     onBack: () -> Unit,
+    // Fork patch 7: hosts the clear-reading-positions action. Pure insertion.
+    feedsViewModel: FeedsViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val initialPage = LocalInitialPage.current
@@ -86,6 +94,8 @@ fun InteractionPage(
     var sharedContentDialogVisible by remember { mutableStateOf(false) }
     var showSortUnreadArticlesDialog by remember { mutableStateOf(false) }
     var showPullToLoadDialog by remember { mutableStateOf(false) }
+    // Fork patch 7: clear-reading-positions confirmation. Pure insertion.
+    var showClearPositionsDialog by remember { mutableStateOf(false) }
 
     RYScaffold(
         containerColor = MaterialTheme.colorScheme.surface onLight MaterialTheme.colorScheme.inverseOnSurface,
@@ -208,6 +218,12 @@ fun InteractionPage(
                             markAsReadAtEnd.toggle(context, scope)
                         }
                     }
+                    // Fork patch 7: clear saved reading positions. Pure insertion.
+                    SettingItem(
+                        title = stringResource(id = R.string.clear_reading_positions),
+                        desc = stringResource(id = R.string.clear_reading_positions_desc),
+                        onClick = { showClearPositionsDialog = true },
+                    ) {}
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Subtitle(
@@ -397,5 +413,42 @@ fun InteractionPage(
         onDismissRequest = {
             showPullToLoadDialog = false
         }
+    )
+
+    // Fork patch 7: clear saved reading positions. Pure insertion.
+    RYDialog(
+        visible = showClearPositionsDialog,
+        onDismissRequest = {
+            showClearPositionsDialog = false
+        },
+        title = {
+            Text(text = stringResource(R.string.clear_reading_positions))
+        },
+        text = {
+            Text(text = stringResource(R.string.clear_reading_positions_tips))
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    feedsViewModel.clearReadingPositions {
+                        showClearPositionsDialog = false
+                        context.showToast(
+                            context.getString(R.string.reading_positions_cleared)
+                        )
+                    }
+                }
+            ) {
+                Text(text = stringResource(R.string.clear))
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    showClearPositionsDialog = false
+                }
+            ) {
+                Text(text = stringResource(R.string.cancel))
+            }
+        },
     )
 }
