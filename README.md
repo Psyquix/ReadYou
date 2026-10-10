@@ -175,4 +175,5 @@ Patches on top of upstream:
 - Per-feed article-list scroll memory
 - Optional mark-as-read at end of article (both renderers)
 - Per-article reading positions with prune-on-save and clear-all
+- In-progress accent bar on the article list
 - In-app update checker pointed at this fork's releases

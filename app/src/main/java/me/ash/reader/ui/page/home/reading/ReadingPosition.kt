@@ -31,6 +31,21 @@ fun positionsToPrune(savedIds: Set<String>, existingIds: Set<String>): Set<Strin
     savedIds - existingIds
 
 /**
+ * Fork patch 8: an article counts as in-progress only while still unread —
+ * list-side marks never touch the store, so the unread check here keeps a
+ * stale spot off read (greyed) rows.
+ */
+fun isReadingNow(isUnread: Boolean, inProgressIds: Set<String>, articleId: String): Boolean =
+    isUnread && articleId in inProgressIds
+
+/** Article ids behind this patch's DataStore entries. */
+fun inProgressIdsFromKeys(keyNames: Set<String>): Set<String> =
+    keyNames.mapNotNull { name ->
+        name.removePrefix(ReadingPositionStore.PREFIX)
+            .takeIf { it != name && it.isNotEmpty() }
+    }.toSet()
+
+/**
  * Clamp a saved offset into a laid-out scroller. Null when there is nothing
  * to do ([saved] at top) or nothing to clamp to ([maxValue] unmeasured —
  * the caller polls). User movement is checked by the caller.

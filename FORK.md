@@ -67,6 +67,10 @@ designed to survive `track-upstream` merges without manual work.
    — third `app/` exception.) Stale entries are pruned on save against the
    article table, and Settings → Interaction offers a confirmed wipe of the
    file.
+8. **In-progress accent bar** (`ArticleItem` + live id set from
+   `ReadingPositionStore`): unread articles holding a saved spot get a short
+   primary bar at the row's start edge. Shown only while still unread, so
+   list-side marks can never leave it on a greyed row; no new preference.
 
 ### Verification status
 
@@ -83,6 +87,7 @@ patch carries a marker for what has actually been seen on a device.
 | 5. Mark read at end of article | `MarkReadAtEndTest`, 8 JVM tests | no — end-detection in CI only so far |
 | 6. Update-check retarget | — (string resource, no logic) | no |
 | 7. Per-article reading positions | `ReadingPositionTest`, 7 JVM tests | no — jumping in CI only so far |
+| 8. In-progress accent bar | `ReadingInProgressTest`, 5 JVM tests | no — bar in CI only so far |
 
 When a patch is merged, its row reads "no" until someone has run it. Promoting
 a row to "yes" is a docs commit; nothing enforces it.

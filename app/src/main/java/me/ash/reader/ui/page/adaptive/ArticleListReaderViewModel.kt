@@ -454,6 +454,14 @@ constructor(
         }
     }
 
+    /**
+     * Fork patch 8: live ids with a saved reading spot, for the in-progress
+     * accent bar. Reactive: every save, clear, and prune propagates.
+     */
+    val inProgressIds: StateFlow<Set<String>> =
+        readingPositionStore.savedIdsFlow()
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
     suspend fun ReaderState.renderContent(articleWithFeed: ArticleWithFeed): ReaderState {
         val contentState =
             if (articleWithFeed.feed.isFullContent) {

@@ -12,12 +12,15 @@ import androidx.paging.compose.itemKey
 import me.ash.reader.domain.data.Diff
 import me.ash.reader.domain.model.article.ArticleFlowItem
 import me.ash.reader.domain.model.article.ArticleWithFeed
+import me.ash.reader.ui.page.home.reading.isReadingNow
 
 @Suppress("FunctionName")
 @OptIn(ExperimentalFoundationApi::class)
 fun LazyListScope.ArticleList(
     pagingItems: LazyPagingItems<ArticleFlowItem>,
     diffMap: Map<String, Diff>,
+    // Fork patch 8: ids with a saved reading spot, for the accent bar.
+    inProgressIds: Set<String> = emptySet(),
     isShowFeedIcon: Boolean,
     isShowStickyHeader: Boolean,
     articleListTonalElevation: Int,
@@ -62,6 +65,12 @@ fun LazyListScope.ArticleList(
                     SwipeableArticleItem(
                         articleWithFeed = item.articleWithFeed,
                         isUnread = diffMap[article.id]?.isUnread ?: article.isUnread,
+                        isReading =
+                            isReadingNow(
+                                diffMap[article.id]?.isUnread ?: article.isUnread,
+                                inProgressIds,
+                                article.id,
+                            ),
                         articleListTonalElevation = articleListTonalElevation,
                         onClick = { onClick(it, index) },
                         isSwipeEnabled = isSwipeEnabled,
@@ -100,6 +109,12 @@ fun LazyListScope.ArticleList(
                         SwipeableArticleItem(
                             articleWithFeed = item.articleWithFeed,
                             isUnread = diffMap[article.id]?.isUnread ?: article.isUnread,
+                            isReading =
+                                isReadingNow(
+                                    diffMap[article.id]?.isUnread ?: article.isUnread,
+                                    inProgressIds,
+                                    article.id,
+                                ),
                             articleListTonalElevation = articleListTonalElevation,
                             onClick = { onClick(it, index) },
                             isSwipeEnabled = isSwipeEnabled,
