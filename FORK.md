@@ -150,6 +150,9 @@ release-notes footer names the right upstream version.
     red build cannot be published by hand. The workflow checks out the source
     run's commit, so `versionName` is read from the tree the APK was built from.
 
+    Version policy: new features bump minor (`0.8.0`), fixes and minor work
+    bump patch (`0.8.1`). `versionCode` rises by one every release.
+
   ```sh
   gh workflow run release.yml -f source_run=<Build Commit run id>
   ```
