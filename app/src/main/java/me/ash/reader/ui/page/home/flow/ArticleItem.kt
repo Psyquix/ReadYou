@@ -10,14 +10,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.ArrowDownward
@@ -46,6 +44,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -94,6 +96,8 @@ fun ArticleItem(
     modifier: Modifier = Modifier,
     articleWithFeed: ArticleWithFeed,
     isUnread: Boolean = articleWithFeed.article.isUnread,
+    // Fork patch 8: in-progress accent bar. Defaulted: upstream untouched.
+    isReading: Boolean = false,
     onClick: (ArticleWithFeed) -> Unit = {},
     onLongClick: (() -> Unit)? = null,
 ) {
@@ -110,6 +114,7 @@ fun ArticleItem(
         imgData = article.img,
         isStarred = article.isStarred,
         isUnread = isUnread,
+        isReading = isReading,
         onClick = { onClick(articleWithFeed) },
         onLongClick = onLongClick,
     )
@@ -127,6 +132,8 @@ fun ArticleItem(
     imgData: Any? = null,
     isStarred: Boolean = false,
     isUnread: Boolean = false,
+    // Fork patch 8: in-progress accent bar. Defaulted: upstream untouched.
+    isReading: Boolean = false,
     onClick: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,
 ) {
@@ -136,6 +143,7 @@ fun ArticleItem(
     val articleListDesc = LocalFlowArticleListDesc.current
     val articleListDate = LocalFlowArticleListTime.current
     val articleListReadIndicator = LocalFlowArticleListReadIndicator.current
+    val barColor = MaterialTheme.colorScheme.primary
 
     Column(
         modifier =
@@ -157,6 +165,24 @@ fun ArticleItem(
                         }
                     }
                 )
+                // Fork patch 8: the bar is drawn post-measure, so it always
+                // knows the row height (a layout child with fractional height
+                // collapses to zero in this wrap-content row). Pure insertion.
+                .drawBehind {
+                    if (isReading) {
+                        val barHeight = size.height * 0.65f
+                        drawRoundRect(
+                            color = barColor,
+                            topLeft =
+                                Offset(
+                                    2.dp.toPx(),
+                                    (size.height - barHeight) / 2f,
+                                ),
+                            size = Size(3.dp.toPx(), barHeight),
+                            cornerRadius = CornerRadius(2.dp.toPx()),
+                        )
+                    }
+                }
     ) {
         // Top
         Row(
@@ -369,21 +395,10 @@ fun SwipeableArticleItem(
             ArticleItem(
                 articleWithFeed = articleWithFeed,
                 isUnread = isUnread,
+                isReading = isReading,
                 onClick = onClick,
                 onLongClick = onLongClick,
             )
-            // Fork patch 8: in-progress accent bar. Pure insertion.
-            if (isReading) {
-                Box(
-                    modifier =
-                        Modifier.align(Alignment.CenterStart)
-                            .padding(start = 2.dp)
-                            .width(3.dp)
-                            .fillMaxHeight(0.65f)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(MaterialTheme.colorScheme.primary),
-                )
-            }
             with(articleWithFeed.article) {
                 if (isMenuEnabled) {
                     AnimatedDropdownMenu(
