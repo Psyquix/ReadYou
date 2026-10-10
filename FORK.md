@@ -38,10 +38,12 @@ designed to survive `track-upstream` merges without manual work.
    to the end of the content does, in both the Native and WebView renderers.
    Short articles already showing their end mark read on open, as before.
    Backing out early leaves the article unread. The one-line gate in `readData`
-   is a second `app/` exception alongside versioning. Follow-up fix: the
-   WebView check waits for loaded content, because `ScrollState.maxValue`
-   starts at 0 (unmeasured) and is indistinguishable from short content —
-   without the guard every article marked read on open.
+   is a second `app/` exception alongside versioning. Follow-up fixes: the
+   WebView body is laid out at full height inside the outer column, so the
+   outer scroll is the reading movement — first a premature bridge on the
+   WebView's own (near-zero-range) scroll was tried and fully reverted, then
+   the end check moved to the outer `ScrollState` with an unmeasured
+   (`maxValue` 0) guard, which is what previously marked articles on open.
 
 ### Verification status
 
