@@ -24,7 +24,7 @@ fun flowScrollKey(filterState: FilterState, sortEarliest: Boolean): String =
         sortEarliest = sortEarliest,
     )
 
-private fun flowScrollPreferencesKey(key: String) = stringPreferencesKey("flow_scroll_position_$key")
+private fun flowScrollPreferencesKey(key: String) = stringPreferencesKey(FLOW_SCROLL_PREFIX + key)
 
 suspend fun Context.saveFlowScrollPosition(key: String, position: FlowScrollPosition) {
     dataStore.edit { it[flowScrollPreferencesKey(key)] = position.encode() }
@@ -38,3 +38,22 @@ suspend fun Context.loadFlowScrollPosition(key: String): FlowScrollPosition? =
     } catch (_: IOException) {
         null
     }
+
+/** All per-feed scroll-memory entry names in the main settings file. */
+suspend fun Context.flowScrollKeys(): Set<String> =
+    try {
+        dataStore.data
+            .map { prefs ->
+                prefs.asMap().keys
+                    .map { it.name }
+                    .filter { it.startsWith(FLOW_SCROLL_PREFIX) }
+                    .toSet()
+            }
+            .first()
+    } catch (_: IOException) {
+        emptySet()
+    }
+
+suspend fun Context.removeFlowScrollPosition(prefsKeyName: String) {
+    dataStore.edit { it.remove(stringPreferencesKey(prefsKeyName)) }
+}

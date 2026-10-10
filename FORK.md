@@ -27,11 +27,16 @@ designed to survive `track-upstream` merges without manual work.
    `FlowScrollPositionStore`): each feed/group/filter remembers its article-list
    position (article id + index + offset, DataStore-backed) and restores it
    across restarts, back-navigation, and feed switches. Anchored on the article
-   id so new arrivals above do not shift the user; a gone article falls back
-   to the clamped saved index. Search results are never stored, mark-all-read
-   and filter taps still go to top, and an open article owns the position on
-   return. Upstream resets to top on every filter change (by construction) and
-   on sync; the sync reset is left in place and restore runs after it.
+   id so new arrivals above do not shift the user; a secondary next-article
+   anchor covers the anchor being read out of an unread-only list (the exact
+   continuation point); both gone falls back to the clamped saved index.
+   Saves track the first visible *article* (date headers skipped). Restores
+   scan at most 300 items so a missing anchor never force-loads the whole
+   list. Entries for deleted feeds/groups are pruned on save. Search results
+   are never stored, mark-all-read and filter taps still go to top, and an
+   open article owns the position on return. Upstream resets to top on every
+   filter change (by construction) and on sync; the sync reset is left in
+   place and restore runs after it.
 5. **Mark as read at end of article** (new `MarkAsReadAtEndPreference`, off by
    default; `ReadingPage` + `ArticleListReaderViewModel.markCurrentArticleAsRead`):
    with the setting on, opening an article no longer marks it read — swiping
@@ -74,7 +79,7 @@ patch carries a marker for what has actually been seen on a device.
 | 1. Feed-icon resolution | — | yes, in the field |
 | 2. Large-feed OOM guard | — | reported from the field (256 MB device) |
 | 3. Mark above/below as unread | `SelectPositionalArticlesTest`, 8 JVM tests | yes — menu shows and hides as intended |
-| 4. Per-feed scroll memory | `FlowScrollPositionTest`, 8 JVM tests | no — restores in CI only so far |
+| 4. Per-feed scroll memory | `FlowScrollPositionTest`, 16 JVM tests | no — restores in CI only so far |
 | 5. Mark read at end of article | `MarkReadAtEndTest`, 8 JVM tests | no — end-detection in CI only so far |
 | 6. Update-check retarget | — (string resource, no logic) | no |
 | 7. Per-article reading positions | `ReadingPositionTest`, 7 JVM tests | no — jumping in CI only so far |
@@ -140,8 +145,11 @@ release-notes footer names the right upstream version.
 - `build_commit.yaml` (upstream file, lightly edited): pinned to
   `ubuntu-24.04` and Node-24-ready actions (`checkout@v4`, `setup-java@v4`,
   `gradle/actions/setup-gradle@v4`, `upload-artifact@v5`), plus a
-  `testGithubReleaseUnitTest` step. `release` only fires on a green
-  `Build Commit`, so **unit tests are a release precondition**. This matters
+  `testGithubReleaseUnitTest` step. Release APK assembly runs on `main`
+  only — branches validate compile + tests (roughly twice as fast), and a
+  branch that breaks the release build is caught by the main build after
+  merge. `release` only fires on a green `Build Commit`, so **unit tests are
+  a release precondition**. This matters
   because `testing.yml` is `pull_request`-only and would otherwise never run on
   an automated upstream merge — a merge that compiles but is semantically wrong
   would ship. Add a test with every patch; this gate is what runs it.
