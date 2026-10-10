@@ -45,4 +45,34 @@ class ReadingInProgressTest {
     fun `empty store resolves to empty`() {
         assertEquals(emptySet<String>(), inProgressIdsFromKeys(emptySet()))
     }
+
+    @Test
+    fun `bar sits in the gutter left of content, vertically centered`() {
+        val bar = readingBarRect(
+            boxWidth = 1000f,
+            boxHeight = 400f,
+            gutterInsetPx = 30f,
+            barWidthPx = 9f,
+            fraction = 0.65f,
+        )
+
+        assertEquals(-30f, bar.left)
+        assertEquals(9f, bar.width)
+        assertEquals(400f * 0.65f, bar.height)
+        assertEquals((400f - 400f * 0.65f) / 2f, bar.top)
+    }
+
+    @Test
+    fun `bar never leaves the row vertically`() {
+        val bar = readingBarRect(
+            boxWidth = 1000f,
+            boxHeight = 100f,
+            gutterInsetPx = 30f,
+            barWidthPx = 9f,
+            fraction = 0.65f,
+        )
+
+        assertTrue(bar.top >= 0f)
+        assertTrue(bar.top + bar.height <= 100f)
+    }
 }
