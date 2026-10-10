@@ -328,8 +328,11 @@ constructor(
                 diffMapHolder.updateDiff(item, isUnread = false)
             }
             item.run {
+                // Fork patch 7: report the true state (was hardcoded false,
+                // which also lied to the BottomBar). Third app/ exception.
+                val unreadNow = diffMapHolder.checkIfUnread(this)
                 _readingUiState.update {
-                    it.copy(articleWithFeed = this, isStarred = article.isStarred, isUnread = false)
+                    it.copy(articleWithFeed = this, isStarred = article.isStarred, isUnread = unreadNow)
                 }
                 _readerState.update {
                     it.copy(
@@ -363,6 +366,9 @@ constructor(
             readingUiState.value.articleWithFeed?.let {
                 if (diffMapHolder.checkIfUnread(it)) {
                     diffMapHolder.updateDiff(it, isUnread = false)
+                    // Fork patch 7: keep the reader state truthful so the
+                    // position saver below stops at the read transition.
+                    _readingUiState.update { state -> state.copy(isUnread = false) }
                 }
             }
         }

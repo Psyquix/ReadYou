@@ -38,7 +38,7 @@ designed to survive `track-upstream` merges without manual work.
    to the end of the content does, in both the Native and WebView renderers.
    Short articles already showing their end mark read on open, as before.
    Backing out early leaves the article unread. The one-line gate in `readData`
-   is a second `app/` exception alongside versioning. Follow-up fixes: the
+   is an `app/` exception alongside versioning (see below). Follow-up fixes: the
    WebView body is laid out at full height inside the outer column, so the
    outer scroll is the reading movement — first a premature bridge on the
    WebView's own (near-zero-range) scroll was tried and fully reverted, then
@@ -55,7 +55,11 @@ designed to survive `track-upstream` merges without manual work.
    `reading_positions` DataStore file that loads lazily — main settings and
    startup are untouched. Reopening auto-jumps to the saved spot (polls wait
    for layout, abort if you moved); reaching the end forgets it; scrolling
-   back to the top clears it. Stale entries are pruned on save against the
+   back to the top clears it. Positions exist for unread articles only:
+   opening a read article starts fresh and drops any stale spot, and the spot
+   is forgotten the moment the article becomes read. (`initData`'s hardcoded
+   unread flag, which also lied to the BottomBar, now reports the true state
+   — third `app/` exception.) Stale entries are pruned on save against the
    article table, and Settings → Interaction offers a confirmed wipe of the
    file.
 
@@ -102,9 +106,13 @@ This is checkable, so check it rather than eyeballing the diff.
 The one exception so far is a test file, which is fork-owned and not part of
 the invariant.
 
+The exceptions are versioning (below) plus two one-line touches in
+`ArticleListReaderViewModel`: patch 5's `readData` gate and patch 7's true
+unread flag in `initData`.
+
 The second exception is versioning: `versionCode`, `versionName`, and the APK
-`outputFileName` in `app/build.gradle.kts` are fork-managed (currently `4` /
-`0.4.0` / `ReadYou-<version>-Manual.apk`). Upstream bumps its own version
+`outputFileName` in `app/build.gradle.kts` are fork-managed (currently `7` /
+`0.6.0` / `ReadYou-<version>-Manual.apk`). Upstream bumps its own version
 lines on every release, so these lines conflict on every upstream merge —
 that is expected. Resolution is always "keep ours". When an upstream merge
 moves the base, also bump `UPSTREAM_BASE` in `release.yml` so the next
