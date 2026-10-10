@@ -163,7 +163,15 @@ GNU GPL v3.0 © [Read You](https://github.com/ReadYouApp/ReadYou/blob/main/LICEN
 
 ## This fork
 
-Psyquix's fork with feed-icon fixes, a large-feed OOM guard, and
-mark-above/below-as-unread, auto-rebuilt on upstream releases. Unit tests gate
-every release. APKs under [Releases](../../releases). Details in
+Psyquix's fork, auto-rebuilt on upstream releases. Unit tests gate
+every release. APKs under [Releases](../../releases). Full details in
 [FORK.md](FORK.md).
+
+Patches on top of upstream:
+
+- Feed-icon resolution (feed image → site icons → feed host)
+- Large-feed OOM guard on subscribe preview
+- Mark above/below as unread in the article menu
+- Per-feed article-list scroll memory
+- Optional mark-as-read at end of article (both renderers)
+- In-app update checker pointed at this fork's releases

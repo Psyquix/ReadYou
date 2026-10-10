@@ -44,6 +44,10 @@ designed to survive `track-upstream` merges without manual work.
    WebView's own (near-zero-range) scroll was tried and fully reverted, then
    the end check moved to the outer `ScrollState` with an unmeasured
    (`maxValue` 0) guard, which is what previously marked articles on open.
+6. **Update-check retarget** (`update_link` in all 42 locale `strings.xml`):
+   the in-app checker queried upstream's `releases/latest`; it now queries
+   this fork's. `getString` resolves per device locale, so every locale file
+   had to move — not just the default one.
 
 ### Verification status
 
@@ -58,6 +62,7 @@ patch carries a marker for what has actually been seen on a device.
 | 3. Mark above/below as unread | `SelectPositionalArticlesTest`, 8 JVM tests | yes — menu shows and hides as intended |
 | 4. Per-feed scroll memory | `FlowScrollPositionTest`, 8 JVM tests | no — restores in CI only so far |
 | 5. Mark read at end of article | `MarkReadAtEndTest`, 8 JVM tests | no — end-detection in CI only so far |
+| 6. Update-check retarget | — (string resource, no logic) | no |
 
 When a patch is merged, its row reads "no" until someone has run it. Promoting
 a row to "yes" is a docs commit; nothing enforces it.
@@ -181,3 +186,6 @@ goes stale, retarget `track-upstream.yml` (remote URL + API repo in the
   back down; scroll again and it stays (a scrolled list is never restored
   over). One DataStore entry is kept per feed/group/filter/sort; nothing
   prunes entries for deleted feeds.
+- **New upstream locales re-point the updater.** If an upstream merge adds a
+  locale, its `update_link` arrives pointing at upstream — swap it to this
+  fork on merge, or those devices check the wrong releases.
