@@ -49,12 +49,15 @@ designed to survive `track-upstream` merges without manual work.
    this fork's. `getString` resolves per device locale, so every locale file
    had to move — not just the default one.
 7. **Per-article reading positions** (`ReadingPositionStore` + `ReadingPage`):
-   each article remembers where you left off (Native list index/offset,
-   WebView scroll offset) in a dedicated `reading_positions` DataStore file
-   that loads lazily — main settings and startup are untouched. Reopening
-   auto-jumps to the saved spot; reaching the end forgets it; scrolling back
-   to the top clears it. Stale entries are pruned on save against the article
-   table, and Settings → Interaction offers a confirmed wipe of the file.
+   each article remembers where you left off (Native list index/offset, WebView
+   outer-scroll offset — the WebView body is laid out at full height, so its
+   own scroll never moves and the outer scroll is the signal) in a dedicated
+   `reading_positions` DataStore file that loads lazily — main settings and
+   startup are untouched. Reopening auto-jumps to the saved spot (polls wait
+   for layout, abort if you moved); reaching the end forgets it; scrolling
+   back to the top clears it. Stale entries are pruned on save against the
+   article table, and Settings → Interaction offers a confirmed wipe of the
+   file.
 
 ### Verification status
 
