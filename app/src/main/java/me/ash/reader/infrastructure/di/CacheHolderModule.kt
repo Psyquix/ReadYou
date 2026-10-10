@@ -8,12 +8,14 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import me.ash.reader.domain.repository.ArticleDao
 import me.ash.reader.domain.service.RssService
 import me.ash.reader.domain.data.DiffMapHolder
 import me.ash.reader.domain.service.AccountService
 import me.ash.reader.infrastructure.preference.SettingsProvider
 import me.ash.reader.infrastructure.rss.ReaderCacheHelper
 import me.ash.reader.infrastructure.rss.RssHelper
+import me.ash.reader.ui.page.home.reading.ReadingPositionStore
 import javax.inject.Singleton
 
 @Module
@@ -45,4 +47,16 @@ object CacheHolderModule {
         rssHelper = rssHelper,
         accountService = accountService,
     )
+
+    // Fork patch 7: per-article reading positions store.
+    @Provides
+    @Singleton
+    fun provideReadingPositionStore(
+        @ApplicationContext context: Context,
+        articleDao: ArticleDao,
+    ): ReadingPositionStore =
+        ReadingPositionStore(
+            context = context,
+            articleDao = articleDao,
+        )
 }

@@ -46,6 +46,8 @@ import me.ash.reader.infrastructure.di.IODispatcher
 import me.ash.reader.infrastructure.preference.PullToLoadNextFeedPreference
 import me.ash.reader.infrastructure.preference.SettingsProvider
 import me.ash.reader.infrastructure.rss.ReaderCacheHelper
+import me.ash.reader.ui.page.home.reading.ReadingPosition
+import me.ash.reader.ui.page.home.reading.ReadingPositionStore
 import timber.log.Timber
 
 private const val TAG = "FlowViewModel"
@@ -66,6 +68,7 @@ constructor(
     val textToSpeechManager: TextToSpeechManager,
     private val imageDownloader: AndroidImageDownloader,
     private val articleListUseCase: ArticlePagingListUseCase,
+    private val readingPositionStore: ReadingPositionStore,
     workManager: WorkManager,
 ) : ViewModel() {
 
@@ -362,6 +365,33 @@ constructor(
                     diffMapHolder.updateDiff(it, isUnread = false)
                 }
             }
+        }
+    }
+
+    /**
+     * Fork patch 7: per-article reading positions. Saving also prunes entries
+     * whose articles no longer exist; all of it runs on a background thread.
+     */
+    fun saveReadingPosition(
+        articleId: String,
+        index: Int,
+        offset: Int,
+        scrollY: Int,
+    ) {
+        viewModelScope.launch(ioDispatcher) {
+            readingPositionStore.save(
+                articleId,
+                ReadingPosition(index, offset, scrollY),
+            )
+        }
+    }
+
+    suspend fun loadReadingPosition(articleId: String): ReadingPosition? =
+        readingPositionStore.load(articleId)
+
+    fun clearReadingPosition(articleId: String) {
+        viewModelScope.launch(ioDispatcher) {
+            readingPositionStore.clear(articleId)
         }
     }
 

@@ -350,6 +350,10 @@
     <string name="about">About</string>
     <string name="mark_as_read_on_scroll">Mark as read on scroll</string>
     <string name="mark_as_read_at_end">Mark as read at end of article</string>
+    <string name="clear_reading_positions">Clear saved reading positions</string>
+    <string name="clear_reading_positions_desc">Forget where you left off in every article</string>
+    <string name="clear_reading_positions_tips">This forgets every saved article reading position. This cannot be undone.</string>
+    <string name="reading_positions_cleared">Cleared saved reading positions</string>
     <string name="hide_empty_groups">Hide empty groups</string>
     <string name="become_a_sponsor">Become a sponsor</string>
     <string name="sponsor_desc">We build and maintain this free, open source app in our free time. If you enjoy it, please consider supporting us with a small donation! ☕️</string>

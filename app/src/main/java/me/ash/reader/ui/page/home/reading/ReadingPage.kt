@@ -40,6 +40,8 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.sp
 import kotlin.math.abs
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import me.ash.reader.R
 import me.ash.reader.infrastructure.android.TextToSpeechManager
@@ -207,6 +209,14 @@ fun ReadingPage(
 
                                 val scope = rememberCoroutineScope()
 
+                                // Fork patch 7: per-article reading positions. Pure insertion.
+                                var restoredWebScrollY by
+                                    remember(readerState.articleId) {
+                                        mutableStateOf<Int?>(null)
+                                    }
+                                var webScrollY by
+                                    remember(readerState.articleId) { mutableStateOf(-1) }
+
                                 LaunchedEffect(bringToTop) {
                                     if (bringToTop) {
                                         scope
@@ -236,7 +246,6 @@ fun ReadingPage(
                                 val markAtEnd = LocalMarkAsReadAtEnd.current.value
                                 val readerRenderer = LocalReadingRenderer.current
                                 LaunchedEffect(readerState.articleId, markAtEnd, readerRenderer) {
-                                    if (!markAtEnd) return@LaunchedEffect
                                     snapshotFlow {
                                         if (
                                             readerRenderer ==
@@ -261,7 +270,93 @@ fun ReadingPage(
                                             )
                                         }
                                     }.collect { atEnd ->
-                                        if (atEnd) viewModel.markCurrentArticleAsRead()
+                                        val id = readerState.articleId
+                                        if (atEnd && id != null) {
+                                            // Finishing always resets the saved spot;
+                                            // marking read additionally needs the setting.
+                                            viewModel.clearReadingPosition(id)
+                                            if (markAtEnd) {
+                                                viewModel.markCurrentArticleAsRead()
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Fork patch 7: restore the saved reading position,
+                                // once per article. Pure insertion.
+                                LaunchedEffect(readerState.articleId) {
+                                    val id = readerState.articleId ?: return@LaunchedEffect
+                                    val saved = viewModel.loadReadingPosition(id)
+                                        ?: return@LaunchedEffect
+                                    if (
+                                        readerRenderer ==
+                                            ReadingRendererPreference.NativeComponent
+                                    ) {
+                                        if (
+                                            (saved.index > 0 || saved.offset > 0) &&
+                                                listState.firstVisibleItemIndex == 0
+                                        ) {
+                                            listState.scrollToItem(saved.index, saved.offset)
+                                        }
+                                    } else if (saved.scrollY > 0) {
+                                        restoredWebScrollY = saved.scrollY
+                                    }
+                                }
+
+                                // Fork patch 7: save the reading position while
+                                // reading (debounced); back at the top clears it.
+                                // Pure insertion.
+                                LaunchedEffect(readerState.articleId) {
+                                    if (
+                                        readerRenderer !=
+                                            ReadingRendererPreference.NativeComponent
+                                    ) {
+                                        return@LaunchedEffect
+                                    }
+                                    snapshotFlow {
+                                        listState.firstVisibleItemIndex to
+                                            listState.firstVisibleItemScrollOffset
+                                    }.collectLatest { (index, offset) ->
+                                        delay(500)
+                                        val id = readerState.articleId
+                                            ?: return@collectLatest
+                                        if (index <= 0 && offset <= 0) {
+                                            viewModel.clearReadingPosition(id)
+                                        } else {
+                                            viewModel.saveReadingPosition(
+                                                articleId = id,
+                                                index = index,
+                                                offset = offset,
+                                                scrollY = 0,
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Fork patch 7: same for the WebView's own scroll
+                                // offset, reported by RYWebView. Pure insertion.
+                                LaunchedEffect(readerState.articleId) {
+                                    if (
+                                        readerRenderer !=
+                                            ReadingRendererPreference.WebView
+                                    ) {
+                                        return@LaunchedEffect
+                                    }
+                                    snapshotFlow { webScrollY }.collectLatest { y ->
+                                        delay(500)
+                                        val id = readerState.articleId
+                                            ?: return@collectLatest
+                                        if (y < 0) return@collectLatest
+                                        if (y <= 0) {
+                                            viewModel.clearReadingPosition(id)
+                                        } else {
+                                            viewModel.saveReadingPosition(
+                                                articleId = id,
+                                                index = 0,
+                                                offset = 0,
+                                                scrollY = y,
+                                            )
+                                        }
                                     }
                                 }
 
@@ -306,6 +401,8 @@ fun ReadingPage(
                                                 currentImageData = ImageData(imgUrl, altText)
                                                 showFullScreenImageViewer = true
                                             },
+                                            restoredScrollY = restoredWebScrollY,
+                                            onScrollYChanged = { webScrollY = it },
                                         )
                                         PullToLoadIndicator(
                                             state = state,

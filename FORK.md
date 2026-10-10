@@ -48,6 +48,13 @@ designed to survive `track-upstream` merges without manual work.
    the in-app checker queried upstream's `releases/latest`; it now queries
    this fork's. `getString` resolves per device locale, so every locale file
    had to move — not just the default one.
+7. **Per-article reading positions** (`ReadingPositionStore` + `ReadingPage`):
+   each article remembers where you left off (Native list index/offset,
+   WebView scroll offset) in a dedicated `reading_positions` DataStore file
+   that loads lazily — main settings and startup are untouched. Reopening
+   auto-jumps to the saved spot; reaching the end forgets it; scrolling back
+   to the top clears it. Stale entries are pruned on save against the article
+   table, and Settings → Interaction offers a confirmed wipe of the file.
 
 ### Verification status
 
@@ -63,6 +70,7 @@ patch carries a marker for what has actually been seen on a device.
 | 4. Per-feed scroll memory | `FlowScrollPositionTest`, 8 JVM tests | no — restores in CI only so far |
 | 5. Mark read at end of article | `MarkReadAtEndTest`, 8 JVM tests | no — end-detection in CI only so far |
 | 6. Update-check retarget | — (string resource, no logic) | no |
+| 7. Per-article reading positions | `ReadingPositionTest`, 7 JVM tests | no — jumping in CI only so far |
 
 When a patch is merged, its row reads "no" until someone has run it. Promoting
 a row to "yes" is a docs commit; nothing enforces it.
