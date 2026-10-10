@@ -19,18 +19,12 @@ fun isNativeListAtEnd(
 }
 
 /**
- * True end of WebView content. All values are in pixels except [contentHeight],
- * which is in CSS pixels and scaled by [scale]. Unlaid-out ([viewHeight] 0)
- * or unloaded ([contentHeight] 0) content is never the end; content shorter
- * than the view is the end as soon as it is laid out.
+ * End of the reader's outer scroll. The WebView renderer lays its article out
+ * at full height inside the outer column, so the outer scroll is the reading
+ * movement there too. [maxValue] 0 means unmeasured — never the end, which is
+ * what previously marked articles on open or at the slightest swipe.
  */
-fun isWebViewContentAtEnd(
-    scrollY: Int,
-    scale: Float,
-    contentHeight: Int,
-    viewHeight: Int,
-    tolerancePx: Int = 8,
-): Boolean {
-    if (viewHeight <= 0 || contentHeight <= 0) return false
-    return scrollY + viewHeight >= contentHeight * scale - tolerancePx
+fun isReaderScrollAtEnd(value: Int, maxValue: Int, tolerance: Int = 50): Boolean {
+    if (maxValue <= 0) return false
+    return value >= maxValue - tolerance
 }
