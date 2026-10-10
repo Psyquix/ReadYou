@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.FiberManualRecord
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.rounded.ArrowDownward
@@ -379,6 +380,8 @@ fun SwipeableArticleItem(
     onMarkBelowAsRead: ((ArticleWithFeed) -> Unit)? = null,
     onMarkAboveAsUnread: ((ArticleWithFeed) -> Unit)? = null,
     onMarkBelowAsUnread: ((ArticleWithFeed) -> Unit)? = null,
+    // Fork patch 7: per-article progress removal. Defaulted: upstream untouched.
+    onRemoveProgress: ((ArticleWithFeed) -> Unit)? = null,
     onShare: ((ArticleWithFeed) -> Unit)? = null,
 ) {
 
@@ -439,12 +442,14 @@ fun SwipeableArticleItem(
                             articleWithFeed = articleWithFeed,
                             isStarred = isStarred,
                             isRead = !isUnread,
+                            isReading = isReading,
                             onToggleStarred = onToggleStarred,
                             onToggleRead = onToggleRead,
                             onMarkAboveAsRead = onMarkAboveAsRead,
                             onMarkBelowAsRead = onMarkBelowAsRead,
                             onMarkAboveAsUnread = onMarkAboveAsUnread,
                             onMarkBelowAsUnread = onMarkBelowAsUnread,
+                            onRemoveProgress = onRemoveProgress,
                             onShare = onShare,
                         ) {
                             isMenuExpanded = false
@@ -631,12 +636,16 @@ fun ArticleItemMenuContent(
     iconSize: DpSize = DpSize(width = 20.dp, height = 20.dp),
     isStarred: Boolean = false,
     isRead: Boolean = false,
+    // Fork patch 7: per-article progress removal, shown only while a spot
+    // exists. Defaulted: upstream untouched.
+    isReading: Boolean = false,
     onToggleStarred: (ArticleWithFeed) -> Unit = {},
     onToggleRead: (ArticleWithFeed) -> Unit = {},
     onMarkAboveAsRead: ((ArticleWithFeed) -> Unit)? = null,
     onMarkBelowAsRead: ((ArticleWithFeed) -> Unit)? = null,
     onMarkAboveAsUnread: ((ArticleWithFeed) -> Unit)? = null,
     onMarkBelowAsUnread: ((ArticleWithFeed) -> Unit)? = null,
+    onRemoveProgress: ((ArticleWithFeed) -> Unit)? = null,
     onShare: ((ArticleWithFeed) -> Unit)? = null,
     onItemClick: (() -> Unit)? = null,
 ) {
@@ -753,6 +762,26 @@ fun ArticleItemMenuContent(
                 )
             },
         )
+    }
+    // Fork patch 7: single-delete of the saved spot, as if never opened.
+    // Only present while a spot exists.
+    if (isReading) {
+        onRemoveProgress?.let {
+            DropdownMenuItem(
+                text = { Text(text = stringResource(id = R.string.remove_progress)) },
+                onClick = {
+                    onRemoveProgress(articleWithFeed)
+                    onItemClick?.invoke()
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.DeleteSweep,
+                        contentDescription = null,
+                        modifier = Modifier.size(iconSize),
+                    )
+                },
+            )
+        }
     }
     onShare?.let {
         HorizontalDivider()
