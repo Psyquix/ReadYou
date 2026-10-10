@@ -62,7 +62,7 @@ class InProgressColorsTest {
 
     @Test
     fun `auto resolves to the theme accent`() {
-        assertEquals(0xFF123456, resolveReadingColorArgb(COLOR_AUTO, 0xFF123456))
-        assertEquals(0xFFABCDEF.toInt(), resolveReadingColorArgb(0xFFABCDEF.toInt(), 0xFF123456))
+        assertEquals(0xFF123456.toInt(), resolveReadingColorArgb(COLOR_AUTO, 0xFF123456.toInt()))
+        assertEquals(0xFFABCDEF.toInt(), resolveReadingColorArgb(0xFFABCDEF.toInt(), 0xFF123456.toInt()))
     }
 }
