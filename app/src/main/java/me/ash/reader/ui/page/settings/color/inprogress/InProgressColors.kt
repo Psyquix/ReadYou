@@ -53,3 +53,7 @@ fun accentShades(argb: Int): List<Int> {
 /** A stored color setting resolves to itself, [COLOR_AUTO] to the theme. */
 fun resolveReadingColorArgb(customArgb: Int, themeArgb: Int): Int =
     if (customArgb == COLOR_AUTO) themeArgb else customArgb
+
+/** The row swatch matching the working copy, if the copy came from a row. */
+fun selectedSwatch(workingArgb: Int, rowColors: List<Int>): Int? =
+    workingArgb.takeIf { it in rowColors }
