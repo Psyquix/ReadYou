@@ -1,5 +1,14 @@
 name: "Build Commit"
-on: push
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      assemble:
+        description: "Also assemble the release APK artifact (for probe builds)"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
 
 jobs:
     build:
@@ -52,10 +61,10 @@ jobs:
             # and validate compile + tests only. A branch that breaks the
             # release build is caught by the main build after merge.
             - run: ./gradlew assembleGithubRelease
-              if: github.ref == 'refs/heads/main'
+              if: github.ref == 'refs/heads/main' || inputs.assemble == 'true'
 
             - uses: actions/upload-artifact@v5
-              if: github.ref == 'refs/heads/main'
+              if: github.ref == 'refs/heads/main' || inputs.assemble == 'true'
               with:
                   name: ReadYou-GitHub-Build-${{ github.sha }}
                   path: app/build/outputs/apk/github/release/*.apk
