@@ -248,7 +248,8 @@ private fun SpectrumPicker(
             .fillMaxWidth()
             .padding(horizontal = 24.dp, vertical = 8.dp),
     ) {
-        val widthPx = with(density) { maxWidth.toPx() }
+        val boxWidth = maxWidth
+        val widthPx = with(density) { boxWidth.toPx() }
         val heightPx = with(density) { 170.dp.toPx() }
         Box(
             modifier = Modifier
@@ -299,7 +300,7 @@ private fun SpectrumPicker(
                     .offset {
                         val half = 9.dp.roundToPx()
                         IntOffset(
-                            (maxWidth * hue / 360f).roundToPx() - half,
+                            (boxWidth * hue / 360f).roundToPx() - half,
                             (170.dp * (1f - saturation)).roundToPx() - half,
                         )
                     }

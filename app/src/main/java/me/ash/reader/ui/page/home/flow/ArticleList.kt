@@ -14,7 +14,7 @@ import me.ash.reader.domain.data.Diff
 import me.ash.reader.domain.model.article.ArticleFlowItem
 import me.ash.reader.domain.model.article.ArticleWithFeed
 import me.ash.reader.ui.page.home.reading.isReadingNow
-import me.ash.reader.ui.page.settings.color.inprogress.InProgressStylePreference
+import me.ash.reader.infrastructure.preference.InProgressStylePreference
 
 @Suppress("FunctionName")
 @OptIn(ExperimentalFoundationApi::class)

@@ -112,7 +112,7 @@ import me.ash.reader.ui.page.home.reading.PullToLoadDefaults.ContentOffsetMultip
 import me.ash.reader.ui.page.home.reading.PullToLoadState
 import me.ash.reader.ui.page.home.reading.pullToLoad
 import me.ash.reader.ui.page.home.reading.rememberPullToLoadState
-import me.ash.reader.ui.page.settings.color.inprogress.InProgressStylePreference
+import me.ash.reader.infrastructure.preference.InProgressStylePreference
 import me.ash.reader.ui.page.settings.color.inprogress.resolveReadingColorArgb
 
 @OptIn(
