@@ -1,5 +1,6 @@
 package me.ash.reader.ui.page.adaptive
 
+import android.content.Context
 import android.net.Uri
 import androidx.compose.ui.util.fastFirstOrNull
 import androidx.lifecycle.ViewModel
@@ -7,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Date
 import javax.inject.Inject
 import kotlin.collections.any
@@ -30,6 +32,8 @@ import me.ash.reader.domain.data.FilterState
 import me.ash.reader.domain.data.FilterStateUseCase
 import me.ash.reader.domain.data.GroupWithFeedsListUseCase
 import me.ash.reader.domain.data.PagerData
+import me.ash.reader.domain.repository.FeedDao
+import me.ash.reader.domain.repository.GroupDao
 import me.ash.reader.domain.model.article.Article
 import me.ash.reader.domain.model.article.ArticleFlowItem
 import me.ash.reader.domain.model.article.ArticleWithFeed
@@ -48,6 +52,12 @@ import me.ash.reader.infrastructure.preference.SettingsProvider
 import me.ash.reader.infrastructure.rss.ReaderCacheHelper
 import me.ash.reader.ui.page.home.reading.ReadingPosition
 import me.ash.reader.ui.page.home.reading.ReadingPositionStore
+import me.ash.reader.ui.page.home.flow.FlowScrollPosition
+import me.ash.reader.ui.page.home.flow.flowScrollKeys
+import me.ash.reader.ui.page.home.flow.loadFlowScrollPosition
+import me.ash.reader.ui.page.home.flow.parseFlowScrollTarget
+import me.ash.reader.ui.page.home.flow.removeFlowScrollPosition
+import me.ash.reader.ui.page.home.flow.saveFlowScrollPosition
 import timber.log.Timber
 
 private const val TAG = "FlowViewModel"
@@ -69,6 +79,10 @@ constructor(
     private val imageDownloader: AndroidImageDownloader,
     private val articleListUseCase: ArticlePagingListUseCase,
     private val readingPositionStore: ReadingPositionStore,
+    private val feedDao: FeedDao,
+    private val groupDao: GroupDao,
+    @ApplicationContext
+    private val appContext: Context,
     workManager: WorkManager,
 ) : ViewModel() {
 
@@ -394,6 +408,45 @@ constructor(
 
     suspend fun loadReadingPosition(articleId: String): ReadingPosition? =
         readingPositionStore.load(articleId)
+
+    /**
+     * Fork patch 4 hardening: saves the feed position, then drops entries
+     * whose feed or group no longer exists. Background thread throughout.
+     */
+    fun saveFlowScrollPosition(key: String, position: FlowScrollPosition) {
+        viewModelScope.launch(ioDispatcher) {
+            appContext.saveFlowScrollPosition(key, position)
+            pruneFlowScrollPositions()
+        }
+    }
+
+    suspend fun loadFlowScrollPosition(key: String): FlowScrollPosition? =
+        appContext.loadFlowScrollPosition(key)
+
+    private suspend fun pruneFlowScrollPositions() {
+        val targets =
+            appContext.flowScrollKeys()
+                .mapNotNull { parseFlowScrollTarget(it) }
+        val missingFeeds =
+            targets.mapNotNull { it.feedId }.distinct().chunked(500).flatMap { chunk ->
+                val found = feedDao.queryByIds(chunk).map { it.id }.toSet()
+                chunk.filter { it !in found }
+            }.toSet()
+        val missingGroups =
+            targets.mapNotNull { it.groupId }.distinct().chunked(500).flatMap { chunk ->
+                val found = groupDao.queryByIds(chunk).map { it.id }.toSet()
+                chunk.filter { it !in found }
+            }.toSet()
+        if (missingFeeds.isEmpty() && missingGroups.isEmpty()) return
+        appContext.flowScrollKeys()
+            .mapNotNull { name ->
+                parseFlowScrollTarget(name)?.let { name to it }
+            }
+            .filter { (_, target) ->
+                target.feedId in missingFeeds || target.groupId in missingGroups
+            }
+            .forEach { (name, _) -> appContext.removeFlowScrollPosition(name) }
+    }
 
     fun clearReadingPosition(articleId: String) {
         viewModelScope.launch(ioDispatcher) {

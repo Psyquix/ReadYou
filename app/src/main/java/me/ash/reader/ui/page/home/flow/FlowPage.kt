@@ -305,25 +305,42 @@ fun FlowPage(
 
     // Fork patch 4: persist the first visible article per feed (debounced).
     // Skipped until the restore below finishes, so a cold start never
-    // overwrites the saved position with the initial top. Pure insertion.
+    // overwrites the saved position with the initial top. Saves the first
+    // visible *article* (date headers are skipped) plus the next article id
+    // as a secondary anchor for when the anchor is later read away. Pure insertion.
     LaunchedEffect(listState, scrollMemoryKey, scrollMemoryEnabled) {
         if (!scrollMemoryEnabled) return@LaunchedEffect
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
-            .collectLatest { (index, offset) ->
-                delay(500)
-                if (!scrollMemoryReady) return@collectLatest
-                val id =
-                    try {
-                        (pagingItems?.peek(index) as? ArticleFlowItem.Article)
-                            ?.articleWithFeed?.article?.id
-                    } catch (_: Exception) {
-                        null
-                    } ?: return@collectLatest
-                context.applicationContext.saveFlowScrollPosition(
-                    scrollMemoryKey,
-                    FlowScrollPosition(articleId = id, index = index, offset = offset),
-                )
+        fun peekArticleId(index: Int): String? =
+            try {
+                (pagingItems?.peek(index) as? ArticleFlowItem.Article)
+                    ?.articleWithFeed?.article?.id
+            } catch (_: Exception) {
+                null
             }
+        snapshotFlow {
+            listState.layoutInfo.visibleItemsInfo
+                .firstOrNull { it.contentType == CONTENT_TYPE_ARTICLE }
+                ?.index ?: -1
+        }.collectLatest { anchorIdx ->
+            delay(500)
+            if (!scrollMemoryReady) return@collectLatest
+            if (anchorIdx < 0) return@collectLatest
+            val anchorId = peekArticleId(anchorIdx) ?: return@collectLatest
+            val nextId =
+                listState.layoutInfo.visibleItemsInfo
+                    .filter { it.contentType == CONTENT_TYPE_ARTICLE && it.index > anchorIdx }
+                    .firstOrNull()
+                    ?.let { peekArticleId(it.index) }
+            viewModel.saveFlowScrollPosition(
+                scrollMemoryKey,
+                FlowScrollPosition(
+                    articleId = anchorId,
+                    index = anchorIdx,
+                    offset = 0,
+                    nextArticleId = nextId,
+                ),
+            )
+        }
     }
 
     if (isTwoPane) {
@@ -374,7 +391,7 @@ fun FlowPage(
             if (!scrollMemoryEnabled) return@LaunchedEffect
             if (readerState.articleId != null) return@LaunchedEffect
             val saved =
-                context.applicationContext.loadFlowScrollPosition(scrollMemoryKey)
+                viewModel.loadFlowScrollPosition(scrollMemoryKey)
                     ?: return@LaunchedEffect
             if (saved.index <= 0) return@LaunchedEffect
             repeat(40) {
@@ -383,22 +400,32 @@ fun FlowPage(
                 if (count > 0 && items != null) {
                     if (listState.firstVisibleItemIndex != 0) return@LaunchedEffect
                     var target = -1
-                    for (i in 0 until count) {
-                        val item =
+                    var nextTarget = -1
+                    // Capped scan: a missing anchor must not force-load the
+                    // whole list through paging; beyond the cap the clamped
+                    // fallback below applies without touching those pages.
+                    for (i in 0 until minOf(count, RESTORE_SCAN_CAP)) {
+                        val id =
                             try {
-                                items.peek(i)
+                                (items.peek(i) as? ArticleFlowItem.Article)
+                                    ?.articleWithFeed?.article?.id
                             } catch (_: Exception) {
                                 null
-                            }
-                        if ((item as? ArticleFlowItem.Article)?.articleWithFeed?.article?.id ==
-                            saved.articleId
-                        ) {
+                            } ?: continue
+                        if (id == saved.articleId) {
                             target = i
                             break
                         }
+                        if (nextTarget == -1 && id == saved.nextArticleId) {
+                            nextTarget = i
+                        }
                     }
                     val index =
-                        if (target != -1) target else saved.index.coerceIn(0, count - 1)
+                        when {
+                            target != -1 -> target
+                            nextTarget != -1 -> nextTarget
+                            else -> saved.index.coerceIn(0, count - 1)
+                        }
                     if (index > 0) listState.scrollToItem(index, saved.offset)
                     return@LaunchedEffect
                 }
