@@ -133,6 +133,8 @@ class SettingsProvider @Inject constructor(
             LocalArticleListSwipeEndAction provides settings.swipeEndAction,
             LocalMarkAsReadOnScroll provides settings.markAsReadOnScroll,
             LocalMarkAsReadAtEnd provides settings.markAsReadAtEnd,
+            LocalInProgressStyle provides settings.inProgressStyle,
+            LocalInProgressColor provides settings.inProgressColor,
             LocalHideEmptyGroups provides settings.hideEmptyGroups,
             LocalPullToSwitchArticle provides settings.pullToSwitchArticle,
             LocalOpenLink provides settings.openLink,

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
@@ -13,6 +14,7 @@ import me.ash.reader.domain.data.Diff
 import me.ash.reader.domain.model.article.ArticleFlowItem
 import me.ash.reader.domain.model.article.ArticleWithFeed
 import me.ash.reader.ui.page.home.reading.isReadingNow
+import me.ash.reader.ui.page.settings.color.inprogress.InProgressStylePreference
 
 @Suppress("FunctionName")
 @OptIn(ExperimentalFoundationApi::class)
@@ -21,6 +23,9 @@ fun LazyListScope.ArticleList(
     diffMap: Map<String, Diff>,
     // Fork patch 8: ids with a saved reading spot, for the accent bar.
     inProgressIds: Set<String> = emptySet(),
+    // Fork patch 9: style + color for the in-progress marker.
+    inProgressStyle: InProgressStylePreference = InProgressStylePreference.Bar,
+    readingColor: Color = Color.Transparent,
     isShowFeedIcon: Boolean,
     isShowStickyHeader: Boolean,
     articleListTonalElevation: Int,
@@ -71,6 +76,8 @@ fun LazyListScope.ArticleList(
                                 inProgressIds,
                                 article.id,
                             ),
+                        inProgressStyle = inProgressStyle,
+                        readingColor = readingColor,
                         articleListTonalElevation = articleListTonalElevation,
                         onClick = { onClick(it, index) },
                         isSwipeEnabled = isSwipeEnabled,
@@ -115,6 +122,8 @@ fun LazyListScope.ArticleList(
                                     inProgressIds,
                                     article.id,
                                 ),
+                            inProgressStyle = inProgressStyle,
+                            readingColor = readingColor,
                             articleListTonalElevation = articleListTonalElevation,
                             onClick = { onClick(it, index) },
                             isSwipeEnabled = isSwipeEnabled,

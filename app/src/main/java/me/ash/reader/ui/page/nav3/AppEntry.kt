@@ -41,6 +41,7 @@ import me.ash.reader.ui.page.settings.color.ColorAndStylePage
 import me.ash.reader.ui.page.settings.color.DarkThemePage
 import me.ash.reader.ui.page.settings.color.feeds.FeedsPageStylePage
 import me.ash.reader.ui.page.settings.color.flow.FlowPageStylePage
+import me.ash.reader.ui.page.settings.color.inprogress.InProgressStylePage
 import me.ash.reader.ui.page.settings.color.reading.BoldCharactersPage
 import me.ash.reader.ui.page.settings.color.reading.ReadingImagePage
 import me.ash.reader.ui.page.settings.color.reading.ReadingStylePage
@@ -230,11 +231,20 @@ fun AppEntry(backStack: NavBackStack<NavKey>) {
                                 navigateToReadingPageStyle = {
                                     backStack.add(Route.ReadingPageStyle)
                                 },
+                                // Fork patch 9: in-progress style page.
+                                navigateToInProgressStyle = {
+                                    backStack.add(Route.InProgressStyle)
+                                },
                             )
                         }
                     Route.DarkTheme -> NavEntry(key) { DarkThemePage(onBack = onBack) }
                     Route.FeedsPageStyle -> NavEntry(key) { FeedsPageStylePage(onBack = onBack) }
                     Route.FlowPageStyle -> NavEntry(key) { FlowPageStylePage(onBack = onBack) }
+                    // Fork patch 9: in-progress style page.
+                    Route.InProgressStyle ->
+                        NavEntry(key) {
+                            InProgressStylePage(onBack = onBack)
+                        }
                     Route.ReadingPageStyle ->
                         NavEntry(key) {
                             ReadingStylePage(

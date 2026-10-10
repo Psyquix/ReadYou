@@ -199,6 +199,8 @@ sealed interface PreferencesKey {
         const val swipeEndAction = "swipeEndAction"
         const val markAsReadOnScroll = "markAsReadOnScroll"
         const val markAsReadAtEnd = "markAsReadAtEnd"
+        const val inProgressStyle = "inProgressStyle"
+        const val inProgressColor = "inProgressColor"
         const val hideEmptyGroups = "hideEmptyGroups"
         const val pullToLoadNextFeed = "pullToLoadNextFeed"
         const val pullToSwitchArticle = "pullToSwitchArticle"
@@ -276,6 +278,8 @@ sealed interface PreferencesKey {
                 IntKey(swipeEndAction),
                 BooleanKey(markAsReadOnScroll),
                 BooleanKey(markAsReadAtEnd),
+                IntKey(inProgressStyle),
+                IntKey(inProgressColor),
                 BooleanKey(hideEmptyGroups),
                 BooleanKey(pullToLoadNextFeed),
                 BooleanKey(pullToSwitchArticle),
@@ -363,6 +367,8 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
         const val swipeEndAction = "swipeEndAction"
         const val markAsReadOnScroll = "markAsReadOnScroll"
         const val markAsReadAtEnd = "markAsReadAtEnd"
+        const val inProgressStyle = "inProgressStyle"
+        const val inProgressColor = "inProgressColor"
         const val hideEmptyGroups = "hideEmptyGroups"
         const val pullToLoadNextFeed = "pullToLoadNextFeed"
         const val pullToSwitchArticle = "pullToSwitchArticle"
@@ -510,6 +516,10 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
                     DataStoreKey(booleanPreferencesKey(markAsReadOnScroll), Boolean::class.java),
                 markAsReadAtEnd to
                     DataStoreKey(booleanPreferencesKey(markAsReadAtEnd), Boolean::class.java),
+                inProgressStyle to
+                    DataStoreKey(intPreferencesKey(inProgressStyle), Int::class.java),
+                inProgressColor to
+                    DataStoreKey(intPreferencesKey(inProgressColor), Int::class.java),
                 hideEmptyGroups to
                     DataStoreKey(booleanPreferencesKey(hideEmptyGroups), Boolean::class.java),
                 pullToLoadNextFeed to

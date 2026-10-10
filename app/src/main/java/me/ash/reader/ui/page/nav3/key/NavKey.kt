@@ -52,6 +52,9 @@ sealed interface Route : NavKey {
 
     @Serializable data object ReadingPageVideo : Route
 
+    // Fork patch 9: in-progress style page.
+    @Serializable data object InProgressStyle : Route
+
     // Interaction
     @Serializable data object Interaction : Route
 

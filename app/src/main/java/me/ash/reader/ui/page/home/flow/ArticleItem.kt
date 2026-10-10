@@ -48,6 +48,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -84,6 +85,7 @@ import me.ash.reader.ui.component.swipe.SwipeAction
 import me.ash.reader.ui.component.swipe.SwipeableActionsBox
 import me.ash.reader.ui.ext.requiresBidi
 import me.ash.reader.ui.ext.surfaceColorAtElevation
+import me.ash.reader.ui.page.settings.color.inprogress.InProgressStylePreference
 import me.ash.reader.ui.page.home.reading.readingBarRect
 import me.ash.reader.ui.page.settings.color.flow.generateArticleWithFeedPreview
 import me.ash.reader.ui.theme.Shape20
@@ -99,6 +101,9 @@ fun ArticleItem(
     isUnread: Boolean = articleWithFeed.article.isUnread,
     // Fork patch 8: in-progress accent bar. Defaulted: upstream untouched.
     isReading: Boolean = false,
+    // Fork patch 9: style + color for the in-progress marker.
+    inProgressStyle: InProgressStylePreference = InProgressStylePreference.Bar,
+    readingColor: Color = Color.Transparent,
     onClick: (ArticleWithFeed) -> Unit = {},
     onLongClick: (() -> Unit)? = null,
 ) {
@@ -116,6 +121,8 @@ fun ArticleItem(
         isStarred = article.isStarred,
         isUnread = isUnread,
         isReading = isReading,
+        inProgressStyle = inProgressStyle,
+        readingColor = readingColor,
         onClick = { onClick(articleWithFeed) },
         onLongClick = onLongClick,
     )
@@ -135,6 +142,9 @@ fun ArticleItem(
     isUnread: Boolean = false,
     // Fork patch 8: in-progress accent bar. Defaulted: upstream untouched.
     isReading: Boolean = false,
+    // Fork patch 9: style + color for the in-progress marker.
+    inProgressStyle: InProgressStylePreference = InProgressStylePreference.Bar,
+    readingColor: Color = Color.Transparent,
     onClick: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,
 ) {
@@ -144,13 +154,20 @@ fun ArticleItem(
     val articleListDesc = LocalFlowArticleListDesc.current
     val articleListDate = LocalFlowArticleListTime.current
     val articleListReadIndicator = LocalFlowArticleListReadIndicator.current
-    val barColor = MaterialTheme.colorScheme.primary
+    // Fork patch 9: highlight wash color (bar keeps the solid color).
+    val washColor =
+        if (isReading && inProgressStyle == InProgressStylePreference.Highlight) {
+            readingColor.copy(alpha = 0.12f)
+        } else {
+            Color.Transparent
+        }
 
     Column(
         modifier =
             modifier
                 .padding(horizontal = 12.dp)
                 .clip(Shape20)
+                .background(washColor, Shape20)
                 .combinedClickable(onClick = onClick, onLongClick = onLongClick)
                 .padding(horizontal = 12.dp, vertical = 12.dp)
                 .alpha(
@@ -170,9 +187,10 @@ fun ArticleItem(
                 // knows the row height (a layout child with fractional height
                 // collapses to zero in this wrap-content row). Geometry comes
                 // from readingBarRect: gutter lane, vertically centered.
+                // Fork patch 9: bar mode only; highlight mode uses the wash.
                 // Pure insertion.
                 .drawBehind {
-                    if (isReading) {
+                    if (isReading && inProgressStyle == InProgressStylePreference.Bar) {
                         val bar =
                             readingBarRect(
                                 boxWidth = size.width,
@@ -181,7 +199,7 @@ fun ArticleItem(
                                 barWidthPx = 3.dp.toPx(),
                             )
                         drawRoundRect(
-                            color = barColor,
+                            color = readingColor,
                             topLeft = Offset(bar.left, bar.top),
                             size = Size(bar.width, bar.height),
                             cornerRadius = CornerRadius(2.dp.toPx()),
@@ -348,6 +366,9 @@ fun SwipeableArticleItem(
     isUnread: Boolean = articleWithFeed.article.isUnread,
     // Fork patch 8: in-progress accent bar. Defaulted: upstream untouched.
     isReading: Boolean = false,
+    // Fork patch 9: style + color for the in-progress marker.
+    inProgressStyle: InProgressStylePreference = InProgressStylePreference.Bar,
+    readingColor: Color = Color.Transparent,
     articleListTonalElevation: Int = 0,
     onClick: (ArticleWithFeed) -> Unit = {},
     isSwipeEnabled: () -> Boolean = { false },
@@ -401,6 +422,8 @@ fun SwipeableArticleItem(
                 articleWithFeed = articleWithFeed,
                 isUnread = isUnread,
                 isReading = isReading,
+                inProgressStyle = inProgressStyle,
+                readingColor = readingColor,
                 onClick = onClick,
                 onLongClick = onLongClick,
             )

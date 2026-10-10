@@ -91,6 +91,8 @@ fun ColorAndStylePage(
     navigateToFeedsPageStyle: () -> Unit,
     navigateToFlowPageStyle: () -> Unit,
     navigateToReadingPageStyle: () -> Unit,
+    // Fork patch 9: in-progress style page. Defaulted: upstream untouched.
+    navigateToInProgressStyle: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val darkTheme = LocalDarkTheme.current
@@ -226,6 +228,11 @@ fun ColorAndStylePage(
                     SettingItem(
                         title = stringResource(R.string.reading_page),
                         onClick = navigateToReadingPageStyle,
+                    ) {}
+                    // Fork patch 9: in-progress style page. Pure insertion.
+                    SettingItem(
+                        title = stringResource(R.string.in_progress),
+                        onClick = navigateToInProgressStyle,
                     ) {}
                 }
                 item {
