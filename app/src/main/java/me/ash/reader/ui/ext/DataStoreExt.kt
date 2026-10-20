@@ -202,6 +202,7 @@ sealed interface PreferencesKey {
         const val inProgressStyle = "inProgressStyle"
         const val inProgressColor = "inProgressColor"
         const val hideEmptyGroups = "hideEmptyGroups"
+        const val detailedSyncIndicator = "detailedSyncIndicator"
         const val pullToLoadNextFeed = "pullToLoadNextFeed"
         const val pullToSwitchArticle = "pullToSwitchArticle"
         const val openLink = "openLink"
@@ -281,6 +282,7 @@ sealed interface PreferencesKey {
                 IntKey(inProgressStyle),
                 IntKey(inProgressColor),
                 BooleanKey(hideEmptyGroups),
+                BooleanKey(detailedSyncIndicator),
                 BooleanKey(pullToLoadNextFeed),
                 BooleanKey(pullToSwitchArticle),
                 IntKey(openLink),
@@ -370,6 +372,7 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
         const val inProgressStyle = "inProgressStyle"
         const val inProgressColor = "inProgressColor"
         const val hideEmptyGroups = "hideEmptyGroups"
+        const val detailedSyncIndicator = "detailedSyncIndicator"
         const val pullToLoadNextFeed = "pullToLoadNextFeed"
         const val pullToSwitchArticle = "pullToSwitchArticle"
         const val openLink = "openLink"
@@ -522,6 +525,8 @@ data class DataStoreKey<T>(val key: Preferences.Key<T>, val type: Class<T>) {
                     DataStoreKey(intPreferencesKey(inProgressColor), Int::class.java),
                 hideEmptyGroups to
                     DataStoreKey(booleanPreferencesKey(hideEmptyGroups), Boolean::class.java),
+                detailedSyncIndicator to
+                    DataStoreKey(booleanPreferencesKey(detailedSyncIndicator), Boolean::class.java),
                 pullToLoadNextFeed to
                     DataStoreKey(booleanPreferencesKey(pullToLoadNextFeed), Boolean::class.java),
                 pullToSwitchArticle to

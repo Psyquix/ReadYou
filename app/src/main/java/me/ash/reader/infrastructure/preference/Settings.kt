@@ -77,6 +77,7 @@ data class Settings(
     val inProgressStyle: InProgressStylePreference = InProgressStylePreference.default,
     val inProgressColor: InProgressColorPreference = InProgressColorPreference.default,
     val hideEmptyGroups: HideEmptyGroupsPreference = HideEmptyGroupsPreference.default,
+    val detailedSyncIndicator: DetailedSyncIndicatorPreference = DetailedSyncIndicatorPreference.default,
     val pullToSwitchFeed: PullToLoadNextFeedPreference = PullToLoadNextFeedPreference.default,
     val pullToSwitchArticle: PullToSwitchArticlePreference = PullToSwitchArticlePreference.default,
     val openLink: OpenLinkPreference = OpenLinkPreference.default,

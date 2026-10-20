@@ -136,6 +136,7 @@ class SettingsProvider @Inject constructor(
             LocalInProgressStyle provides settings.inProgressStyle,
             LocalInProgressColor provides settings.inProgressColor,
             LocalHideEmptyGroups provides settings.hideEmptyGroups,
+            LocalDetailedSyncIndicator provides settings.detailedSyncIndicator,
             LocalPullToSwitchArticle provides settings.pullToSwitchArticle,
             LocalOpenLink provides settings.openLink,
             LocalOpenLinkSpecificBrowser provides settings.openLinkSpecificBrowser,

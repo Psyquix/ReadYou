@@ -28,6 +28,7 @@ import me.ash.reader.infrastructure.preference.InitialFilterPreference
 import me.ash.reader.infrastructure.preference.InitialPagePreference
 import me.ash.reader.infrastructure.preference.LocalArticleListSwipeEndAction
 import me.ash.reader.infrastructure.preference.LocalArticleListSwipeStartAction
+import me.ash.reader.infrastructure.preference.LocalDetailedSyncIndicator
 import me.ash.reader.infrastructure.preference.LocalHideEmptyGroups
 import me.ash.reader.infrastructure.preference.LocalInitialFilter
 import me.ash.reader.infrastructure.preference.LocalInitialPage
@@ -73,6 +74,7 @@ fun InteractionPage(
     val markAsReadOnScroll = LocalMarkAsReadOnScroll.current
     val markAsReadAtEnd = LocalMarkAsReadAtEnd.current
     val hideEmptyGroups = LocalHideEmptyGroups.current
+    val detailedSyncIndicator = LocalDetailedSyncIndicator.current
     val sortUnreadArticles = LocalSortUnreadArticles.current
     val pullToSwitchArticle = LocalPullToSwitchArticle.current
     val openLink = LocalOpenLink.current
@@ -132,6 +134,21 @@ fun InteractionPage(
                             initialFilterDialogVisible = true
                         },
                     ) {}
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Subtitle(
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                        text = stringResource(R.string.sync_interval),
+                    )
+                    SettingItem(
+                        title = stringResource(R.string.detailed_sync_indicator),
+                        desc = stringResource(R.string.detailed_sync_indicator_desc),
+                        onClick = { detailedSyncIndicator.toggle(context, scope) },
+                    ) {
+                        RYSwitch(activated = detailedSyncIndicator.value) {
+                            detailedSyncIndicator.toggle(context, scope)
+                        }
+                    }
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Subtitle(

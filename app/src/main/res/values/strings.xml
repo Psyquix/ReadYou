@@ -266,6 +266,8 @@
     <string name="synchronous">Syncing</string>
     <string name="sync_interval">Sync</string>
     <string name="sync_once_on_start">Sync once on start</string>
+    <string name="detailed_sync_indicator">Detailed sync indicator</string>
+    <string name="detailed_sync_indicator_desc">Show feed and article progress while syncing. Off uses the default circle.</string>
     <string name="only_on_wifi">Only on Wi-Fi</string>
     <string name="only_when_charging">Only when charging</string>
     <string name="keep_archived_articles">Keep archived articles</string>

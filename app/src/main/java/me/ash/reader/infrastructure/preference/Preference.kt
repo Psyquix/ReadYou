@@ -84,6 +84,7 @@ fun Preferences.toSettings(): Settings {
         inProgressStyle = InProgressStylePreference.fromPreferences(this),
         inProgressColor = InProgressColorPreference.fromPreferences(this),
         hideEmptyGroups = HideEmptyGroupsPreference.fromPreferences(this),
+        detailedSyncIndicator = DetailedSyncIndicatorPreference.fromPreferences(this),
         pullToSwitchFeed = PullToLoadNextFeedPreference.fromPreference(this),
         pullToSwitchArticle = PullToSwitchArticlePreference.fromPreference(this),
         openLink = OpenLinkPreference.fromPreferences(this),
