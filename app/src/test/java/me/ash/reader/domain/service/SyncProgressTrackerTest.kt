@@ -1,5 +1,6 @@
 package me.ash.reader.domain.service
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -8,6 +9,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SyncProgressTrackerTest {
     @Test
     fun `start exposes a running session`() = runTest {
@@ -91,6 +93,34 @@ class SyncProgressTrackerTest {
         runCurrent()
         assertEquals("w2", tracker.state.value!!.sessionId)
         assertEquals(SyncStatus.RUNNING, tracker.state.value!!.status)
+    }
+
+    @Test
+    fun `restarting the same session cancels the previous completion hold`() = runTest {
+        val tracker = SyncProgressTracker(this)
+        tracker.start("w1").finish(true)
+        advanceTimeBy(1_000)
+        tracker.start("w1")
+        advanceTimeBy(1_000)
+        runCurrent()
+        assertEquals("w1", tracker.state.value!!.sessionId)
+        assertEquals(SyncStatus.RUNNING, tracker.state.value!!.status)
+    }
+
+    @Test
+    fun `negative article counts are ignored`() = runTest {
+        val tracker = SyncProgressTracker(this)
+        val session = tracker.start("w1")
+        session.feedCompleted(newArticles = -5)
+        session.articleBatchCompleted(-2)
+        assertEquals(1, tracker.state.value!!.feedsDone)
+        assertEquals(0, tracker.state.value!!.articlesDone)
+
+        session.feedCompleted(newArticles = 10)
+        session.feedCompleted(newArticles = -5)
+        session.articleBatchCompleted(-2)
+        assertEquals(3, tracker.state.value!!.feedsDone)
+        assertEquals(10, tracker.state.value!!.articlesDone)
     }
 
     @Test
