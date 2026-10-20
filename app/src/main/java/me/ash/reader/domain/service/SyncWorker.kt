@@ -7,6 +7,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ensureActive
 import me.ash.reader.domain.model.account.Account
 import me.ash.reader.infrastructure.rss.ReaderCacheHelper
 
@@ -59,6 +60,7 @@ constructor(
                 )
                 .then(OneTimeWorkRequestBuilder<WidgetUpdateWorker>().build())
                 .enqueue()
+            coroutineContext.ensureActive()
             session.finish(result is ListenableWorker.Result.Success)
             return result
         } catch (c: CancellationException) {

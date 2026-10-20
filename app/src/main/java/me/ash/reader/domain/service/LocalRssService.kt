@@ -6,6 +6,7 @@ import androidx.work.WorkManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Date
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -114,7 +115,10 @@ constructor(
             accountService.update(currentAccount.copy(updateAt = Date()))
             ListenableWorker.Result.success()
         }
-            .onFailure { syncLogger.log(it) }
+            .onFailure {
+                if (it is CancellationException) throw it
+                syncLogger.log(it)
+            }
             .getOrNull() ?: ListenableWorker.Result.retry()
     }
 

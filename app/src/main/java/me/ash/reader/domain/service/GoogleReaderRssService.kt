@@ -227,9 +227,9 @@ constructor(
         progress: SyncProgressSession?,
     ): ListenableWorker.Result {
         return if (feedId != null) {
-            syncFeed(accountId, feedId)
+            syncFeed(accountId, feedId, progress)
         } else {
-            sync(accountId)
+            sync(accountId, progress)
         }
     }
 
@@ -253,7 +253,10 @@ constructor(
      * @link https://github.com/theoldreader/api
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private suspend fun sync(accountId: Int): ListenableWorker.Result = coroutineScope {
+    private suspend fun sync(
+        accountId: Int,
+        progress: SyncProgressSession?,
+    ): ListenableWorker.Result = coroutineScope {
         val preTime = System.currentTimeMillis()
         val preDate = Date(preTime)
 
@@ -524,7 +527,11 @@ constructor(
         }
     }
 
-    private suspend fun syncFeed(accountId: Int, feedId: String): ListenableWorker.Result =
+    private suspend fun syncFeed(
+        accountId: Int,
+        feedId: String,
+        progress: SyncProgressSession?,
+    ): ListenableWorker.Result =
         supervisorScope {
             val preTime = System.currentTimeMillis()
             val account = accountService.getAccountById(accountId)
