@@ -224,6 +224,7 @@ constructor(
         accountId: Int,
         feedId: String?,
         groupId: String?,
+        progress: SyncProgressSession?,
     ): ListenableWorker.Result {
         return if (feedId != null) {
             syncFeed(accountId, feedId)

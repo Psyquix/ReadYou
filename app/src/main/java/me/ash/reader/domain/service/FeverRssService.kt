@@ -147,6 +147,7 @@ constructor(
         accountId: Int,
         feedId: String?,
         groupId: String?,
+        progress: SyncProgressSession?,
     ): ListenableWorker.Result = coroutineScope {
         try {
             val preTime = System.currentTimeMillis()

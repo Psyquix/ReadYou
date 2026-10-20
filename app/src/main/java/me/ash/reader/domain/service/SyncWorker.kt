@@ -6,6 +6,7 @@ import androidx.work.*
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
 import me.ash.reader.domain.model.account.Account
 import me.ash.reader.infrastructure.rss.ReaderCacheHelper
 
@@ -18,6 +19,7 @@ constructor(
     private val rssService: RssService,
     private val readerCacheHelper: ReaderCacheHelper,
     private val workManager: WorkManager,
+    private val syncProgressTracker: SyncProgressTracker,
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -27,30 +29,45 @@ constructor(
         val feedId = data.getString("feedId")
         val groupId = data.getString("groupId")
 
-        return rssService
-            .get()
-            .sync(accountId = accountId, feedId = feedId, groupId = groupId)
-            .also {
-                rssService.get().clearKeepArchivedArticles().forEach {
-                    readerCacheHelper.deleteCacheFor(articleId = it.id)
-                }
-                workManager
-                    .beginUniqueWork(
-                        uniqueWorkName = POST_SYNC_WORK_NAME,
-                        existingWorkPolicy = ExistingWorkPolicy.KEEP,
-                        OneTimeWorkRequestBuilder<ReaderWorker>()
-                            .addTag(READER_TAG)
-                            .addTag(ONETIME_WORK_TAG)
-                            .setBackoffCriteria(
-                                backoffPolicy = BackoffPolicy.EXPONENTIAL,
-                                backoffDelay = 30,
-                                timeUnit = TimeUnit.SECONDS,
-                            )
-                            .build(),
+        val session = syncProgressTracker.start(id.toString())
+        try {
+            val result =
+                rssService
+                    .get()
+                    .sync(
+                        accountId = accountId,
+                        feedId = feedId,
+                        groupId = groupId,
+                        progress = session,
                     )
-                    .then(OneTimeWorkRequestBuilder<WidgetUpdateWorker>().build())
-                    .enqueue()
+            rssService.get().clearKeepArchivedArticles().forEach {
+                readerCacheHelper.deleteCacheFor(articleId = it.id)
             }
+            workManager
+                .beginUniqueWork(
+                    uniqueWorkName = POST_SYNC_WORK_NAME,
+                    existingWorkPolicy = ExistingWorkPolicy.KEEP,
+                    OneTimeWorkRequestBuilder<ReaderWorker>()
+                        .addTag(READER_TAG)
+                        .addTag(ONETIME_WORK_TAG)
+                        .setBackoffCriteria(
+                            backoffPolicy = BackoffPolicy.EXPONENTIAL,
+                            backoffDelay = 30,
+                            timeUnit = TimeUnit.SECONDS,
+                        )
+                        .build(),
+                )
+                .then(OneTimeWorkRequestBuilder<WidgetUpdateWorker>().build())
+                .enqueue()
+            session.finish(result is ListenableWorker.Result.Success)
+            return result
+        } catch (c: CancellationException) {
+            session.cancel()
+            throw c
+        } catch (t: Throwable) {
+            session.finish(false)
+            throw t
+        }
     }
 
     companion object {

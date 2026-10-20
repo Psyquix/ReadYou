@@ -58,7 +58,8 @@ constructor(
     override suspend fun sync(
         accountId: Int,
         feedId: String?,
-        groupId: String?
+        groupId: String?,
+        progress: SyncProgressSession?,
     ): ListenableWorker.Result = supervisorScope {
         return@supervisorScope runCatching {
             val preTime = System.currentTimeMillis()
@@ -75,6 +76,8 @@ constructor(
                     groupId != null -> feedDao.queryByGroupId(accountId, groupId)
                     else -> feedDao.queryAll(accountId)
                 }
+
+            progress?.setFeedTotal(feedsToSync.size)
 
             feedsToSync
                 .mapIndexed { _, currentFeed ->
@@ -96,6 +99,7 @@ constructor(
                                     articles = fetchedArticles,
                                     feed = currentFeed,
                                 )
+                            progress?.feedCompleted(newArticles.size)
                             if (currentFeed.isNotification && newArticles.isNotEmpty()) {
                                 notificationHelper.notify(
                                     fetchedFeed.copy(articles = newArticles, feed = currentFeed)
