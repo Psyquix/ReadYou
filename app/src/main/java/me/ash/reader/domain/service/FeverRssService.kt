@@ -11,6 +11,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Date
 import javax.inject.Inject
 import kotlin.collections.set
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.coroutineScope
 import me.ash.reader.R
@@ -252,6 +253,7 @@ constructor(
                     }
 
                 allArticles.addAll(articlesFromBatch)
+                progress?.articleBatchCompleted(articlesFromBatch.size)
 
                 lastSeenId = fetchedItems.lastOrNull()?.id ?: break
 
@@ -317,6 +319,8 @@ constructor(
                 )
             )
             ListenableWorker.Result.success()
+        } catch (c: CancellationException) {
+            throw c
         } catch (e: Exception) {
             Log.e("RLog", "On sync exception: ${e.message}", e)
             //                withContext(mainDispatcher) {

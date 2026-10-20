@@ -13,6 +13,7 @@ import java.util.Date
 import javax.inject.Inject
 import kotlin.collections.chunked
 import kotlin.collections.toSet
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -432,10 +433,12 @@ constructor(
                         localItemIds)
                     .toSet()
             }
+            val toBeSyncIds = toBeSync.await()
+            progress?.setArticleTotal(toBeSyncIds.size)
 
             val deferredList =
                 fetchItemsContentsDeferred(
-                        itemIds = toBeSync.await(),
+                        itemIds = toBeSyncIds,
                         googleReaderAPI = googleReaderAPI,
                         accountId = accountId,
                         unreadIds = remoteUnreadIds.await(),
@@ -466,7 +469,9 @@ constructor(
             }
 
             groupDao.insertOrUpdate(remoteGroups.await())
-            feedDao.insertOrUpdate(remoteFeeds.await())
+            val remoteFeedsList = remoteFeeds.await()
+            feedDao.insertOrUpdate(remoteFeedsList)
+            progress?.setFeedTotal(remoteFeedsList.size)
 
             val notificationFeeds =
                 feedDao.queryNotificationEnabled(accountId).associateBy { it.id }
@@ -479,6 +484,7 @@ constructor(
                             for (deferred in deferredList) {
                                 deferred.onAwait {
                                     articleDao.insertList(it)
+                                    progress?.articleBatchCompleted(it.size)
                                     articlesToNotify.addAll(
                                         it.fastFilter {
                                             it.isUnread && notificationFeedIds.contains(it.feedId)
@@ -515,6 +521,8 @@ constructor(
 
             accountService.update(account.copy(updateAt = Date()))
             ListenableWorker.Result.success()
+        } catch (c: CancellationException) {
+            throw c
         } catch (e: Exception) {
             Timber.tag("RLog").e(e, "On sync exception: ${e.message}")
             syncLogger.log(e)
@@ -597,6 +605,8 @@ constructor(
             }
 
             val toFetch = remoteAllIds.await() - localIds
+            progress?.setArticleTotal(toFetch.size)
+            progress?.setFeedTotal(1)
 
             val items =
                 fetchItemsContents(
@@ -606,6 +616,7 @@ constructor(
                     unreadIds = remoteUnreadIds.await(),
                     starredIds = remoteStarredIds.await(),
                 )
+            progress?.articleBatchCompleted(items.size)
 
             if (feed.isNotification) {
                 val articlesToNotify = items.fastFilter { it.isUnread }
