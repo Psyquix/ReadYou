@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -56,6 +57,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -77,6 +79,7 @@ import me.ash.reader.R
 import me.ash.reader.domain.data.PagerData
 import me.ash.reader.domain.model.article.ArticleFlowItem
 import me.ash.reader.domain.model.article.ArticleWithFeed
+import me.ash.reader.infrastructure.preference.LocalDetailedSyncIndicator
 import me.ash.reader.infrastructure.preference.LocalFlowArticleListDateStickyHeader
 import me.ash.reader.infrastructure.preference.LocalFlowArticleListFeedIcon
 import me.ash.reader.infrastructure.preference.LocalFlowArticleListTonalElevation
@@ -112,6 +115,7 @@ import me.ash.reader.ui.page.home.reading.PullToLoadDefaults.ContentOffsetMultip
 import me.ash.reader.ui.page.home.reading.PullToLoadState
 import me.ash.reader.ui.page.home.reading.pullToLoad
 import me.ash.reader.ui.page.home.reading.rememberPullToLoadState
+import me.ash.reader.ui.page.home.sync.SyncProgressPillHost
 import me.ash.reader.infrastructure.preference.InProgressStylePreference
 import me.ash.reader.ui.page.settings.color.inprogress.resolveReadingColorArgb
 
@@ -139,6 +143,7 @@ fun FlowPage(
     val filterBarTonalElevation = LocalFlowFilterBarTonalElevation.current
     val sharedContent = LocalSharedContent.current
     val markAsReadOnScroll = LocalMarkAsReadOnScroll.current.value
+    val detailedSyncIndicator = LocalDetailedSyncIndicator.current
     val context = LocalContext.current
 
     val openLink = LocalOpenLink.current
@@ -893,7 +898,10 @@ fun FlowPage(
             },
         )
         currentPullToLoadState?.let {
-            PullToSyncIndicator(pullToLoadState = it, isSyncing = isSyncing)
+            PullToSyncIndicator(
+                pullToLoadState = it,
+                isSyncing = isSyncing && !detailedSyncIndicator.value,
+            )
             PullToLoadIndicator(
                 state = it,
                 loadAction = currentLoadAction,
@@ -904,5 +912,12 @@ fun FlowPage(
                         ),
             )
         }
+        SyncProgressPillHost(
+            isSyncRunning = isSyncing,
+            modifier =
+                Modifier.statusBarsPadding()
+                    .padding(top = 72.dp)
+                    .align(Alignment.TopCenter),
+        )
     }
 }
