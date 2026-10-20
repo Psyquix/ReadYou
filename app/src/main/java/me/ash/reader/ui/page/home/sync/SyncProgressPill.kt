@@ -1,11 +1,16 @@
 package me.ash.reader.ui.page.home.sync
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,6 +40,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -89,8 +96,11 @@ fun SyncProgressPill(
         targetState = model,
         modifier = modifier,
         transitionSpec = {
-            (fadeIn() + slideInVertically(initialOffsetY = { -it / 2 })) togetherWith
-                (fadeOut() + slideOutVertically(targetOffsetY = { -it / 2 }))
+            ContentTransform(
+                targetContentEnter = fadeIn() + slideInVertically(initialOffsetY = { -it / 2 }),
+                initialContentExit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 2 }),
+                sizeTransform = SizeTransform(clip = false),
+            )
         },
         contentKey = { it != null },
         label = "sync-progress-pill",
@@ -112,17 +122,56 @@ private fun PillContent(model: SyncPillModel) {
         if (isFailed) MaterialTheme.colorScheme.onErrorContainer
         else MaterialTheme.colorScheme.onPrimaryFixedVariant
 
+    val animatedDone by
+        animateIntAsState(
+            targetValue = (model as? SyncPillModel.Running)?.done ?: 0,
+            animationSpec = tween(durationMillis = 250),
+            label = "sync-done",
+        )
+    val animatedSubtitleCount by
+        animateIntAsState(
+            targetValue =
+                (model as? SyncPillModel.Running)
+                    ?.takeIf {
+                        it.subtitleKind == SyncSubtitleKind.NEW_ARTICLES ||
+                            it.subtitleKind == SyncSubtitleKind.ARTICLES_FOUND
+                    }
+                    ?.subtitleCount ?: 0,
+            animationSpec = tween(durationMillis = 250),
+            label = "sync-subtitle-count",
+        )
+
     val title: String
     val count: String?
     val subtitle: String?
+    val rawCount: String?
+    val rawSubtitle: String?
     when (model) {
         is SyncPillModel.Running -> {
             if (model.total == null) {
                 title = stringResource(R.string.syncing)
                 count = null
+                rawCount = null
             } else {
                 title = stringResource(R.string.synchronous)
                 count =
+                    when (model.unit) {
+                        SyncCountUnit.FEEDS ->
+                            pluralStringResource(
+                                R.plurals.sync_feeds_progress,
+                                model.total,
+                                animatedDone,
+                                model.total,
+                            )
+                        SyncCountUnit.ARTICLES ->
+                            pluralStringResource(
+                                R.plurals.sync_articles_progress,
+                                model.total,
+                                animatedDone,
+                                model.total,
+                            )
+                    }
+                rawCount =
                     when (model.unit) {
                         SyncCountUnit.FEEDS ->
                             pluralStringResource(
@@ -140,7 +189,7 @@ private fun PillContent(model: SyncPillModel) {
                             )
                     }
             }
-            subtitle =
+            rawSubtitle =
                 when (model.subtitleKind) {
                     SyncSubtitleKind.NEW_ARTICLES ->
                         pluralStringResource(
@@ -162,20 +211,40 @@ private fun PillContent(model: SyncPillModel) {
                         )
                     SyncSubtitleKind.NONE -> null
                 }
+            subtitle =
+                when (model.subtitleKind) {
+                    SyncSubtitleKind.NEW_ARTICLES, SyncSubtitleKind.ARTICLES_FOUND ->
+                        pluralStringResource(
+                            if (model.subtitleKind == SyncSubtitleKind.NEW_ARTICLES) {
+                                R.plurals.sync_new_articles
+                            } else {
+                                R.plurals.sync_articles_found
+                            },
+                            animatedSubtitleCount,
+                            animatedSubtitleCount,
+                        )
+                    SyncSubtitleKind.FEED_COUNT -> rawSubtitle
+                    SyncSubtitleKind.NONE -> null
+                }
         }
         is SyncPillModel.Completed -> {
             title = stringResource(R.string.sync_up_to_date)
             count = null
+            rawCount = null
             subtitle = summaryText(model.summary, suppressZeroWork = true)
+            rawSubtitle = subtitle
         }
         is SyncPillModel.Failed -> {
             title = stringResource(R.string.sync_failed)
             count = null
+            rawCount = null
             subtitle = summaryText(model.summary, suppressZeroWork = false)
+            rawSubtitle = subtitle
         }
     }
 
-    val contentDescription = listOfNotNull(title, count, subtitle).joinToString(", ")
+    val hideAnimatedTextSemantics = model is SyncPillModel.Running
+    val contentDescription = listOfNotNull(title, rawCount, rawSubtitle).joinToString(", ")
 
     Surface(
         modifier =
@@ -194,24 +263,41 @@ private fun PillContent(model: SyncPillModel) {
                     .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                when (model) {
-                    is SyncPillModel.Running ->
-                        LoadingIndicator(
-                            color = contentColor,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    is SyncPillModel.Completed ->
-                        Icon(
-                            imageVector = Icons.Rounded.CheckCircle,
-                            contentDescription = null,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    is SyncPillModel.Failed ->
-                        Icon(
-                            imageVector = Icons.Rounded.SyncProblem,
-                            contentDescription = null,
-                            modifier = Modifier.size(22.dp),
-                        )
+                val leadingState =
+                    when (model) {
+                        is SyncPillModel.Running -> SyncLeadingState.RUNNING
+                        is SyncPillModel.Completed -> SyncLeadingState.COMPLETED
+                        is SyncPillModel.Failed -> SyncLeadingState.FAILED
+                    }
+                Box(
+                    modifier = Modifier.size(22.dp).clearAndSetSemantics {},
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Crossfade(
+                        targetState = leadingState,
+                        animationSpec = tween(durationMillis = 250),
+                        label = "sync-leading",
+                    ) { state ->
+                        when (state) {
+                            SyncLeadingState.RUNNING ->
+                                LoadingIndicator(
+                                    color = contentColor,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            SyncLeadingState.COMPLETED ->
+                                Icon(
+                                    imageVector = Icons.Rounded.CheckCircle,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            SyncLeadingState.FAILED ->
+                                Icon(
+                                    imageVector = Icons.Rounded.SyncProblem,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                        }
+                    }
                 }
                 Spacer(modifier = Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -227,6 +313,12 @@ private fun PillContent(model: SyncPillModel) {
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = count,
+                                modifier =
+                                    if (hideAnimatedTextSemantics) {
+                                        Modifier.clearAndSetSemantics {}
+                                    } else {
+                                        Modifier
+                                    },
                                 style = MaterialTheme.typography.labelMedium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -236,6 +328,12 @@ private fun PillContent(model: SyncPillModel) {
                     if (subtitle != null) {
                         Text(
                             text = subtitle,
+                            modifier =
+                                if (hideAnimatedTextSemantics) {
+                                    Modifier.clearAndSetSemantics {}
+                                } else {
+                                    Modifier
+                                },
                             style = MaterialTheme.typography.labelMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -252,27 +350,35 @@ private fun PillContent(model: SyncPillModel) {
     }
 }
 
+private enum class SyncLeadingState { RUNNING, COMPLETED, FAILED }
+
 @Composable
 private fun PillProgressBar(fraction: Float?) {
     Spacer(modifier = Modifier.height(8.dp))
     val color = MaterialTheme.colorScheme.primary
     val trackColor = color.copy(alpha = 0.2f)
+    val modifier =
+        Modifier.fillMaxWidth()
+            .height(3.dp)
+            .clearAndSetSemantics {
+                this[SemanticsProperties.TestTag] = "sync-progress-bar"
+            }
     if (fraction != null) {
+        val animatedFraction by
+            animateFloatAsState(
+                targetValue = fraction,
+                animationSpec = tween(durationMillis = 300),
+                label = "sync-progress-fraction",
+            )
         LinearProgressIndicator(
-            progress = { fraction },
-            modifier =
-                Modifier.fillMaxWidth()
-                    .height(3.dp)
-                    .testTag("sync-progress-bar"),
+            progress = { animatedFraction },
+            modifier = modifier,
             color = color,
             trackColor = trackColor,
         )
     } else {
         LinearProgressIndicator(
-            modifier =
-                Modifier.fillMaxWidth()
-                    .height(3.dp)
-                    .testTag("sync-progress-bar"),
+            modifier = modifier,
             color = color,
             trackColor = trackColor,
         )

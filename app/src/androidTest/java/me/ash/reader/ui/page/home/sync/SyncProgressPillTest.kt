@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertContentDescriptionContains
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import me.ash.reader.domain.service.SyncProgress
@@ -45,11 +47,16 @@ class SyncProgressPillTest {
         rule.mainClock.advanceTimeBy(1_000)
     }
 
+    private fun assertPillDescriptionContains(text: String) {
+        rule.onNodeWithTag("sync-progress-pill", useUnmergedTree = true)
+            .assertContentDescriptionContains(text, substring = true)
+    }
+
     @Test
     fun localRunningShowsFeedAndNewArticleCounts() {
         show(progress(feedsDone = 4, feedsTotal = 6, articlesDone = 82), isSyncRunning = true)
-        rule.onNodeWithText("4 / 6 feeds", useUnmergedTree = true).assertIsDisplayed()
-        rule.onNodeWithText("82 new articles", useUnmergedTree = true).assertIsDisplayed()
+        assertPillDescriptionContains("4 / 6 feeds")
+        assertPillDescriptionContains("82 new articles")
         rule.onNodeWithTag("sync-progress-bar", useUnmergedTree = true).assertExists()
     }
 
@@ -70,14 +77,14 @@ class SyncProgressPillTest {
     @Test
     fun oneFeedUsesSingularCopy() {
         show(progress(feedsDone = 1, feedsTotal = 1, articlesDone = 1), true)
-        rule.onNodeWithText("1 / 1 feed", useUnmergedTree = true).assertIsDisplayed()
-        rule.onNodeWithText("1 new article", useUnmergedTree = true).assertIsDisplayed()
+        assertPillDescriptionContains("1 / 1 feed")
+        assertPillDescriptionContains("1 new article")
     }
 
     @Test
     fun zeroNewArticlesStillRenders() {
         show(progress(feedsDone = 1, feedsTotal = 6, articlesDone = 0), true)
-        rule.onNodeWithText("0 new articles", useUnmergedTree = true).assertIsDisplayed()
+        assertPillDescriptionContains("0 new articles")
     }
 
     @Test
@@ -85,6 +92,8 @@ class SyncProgressPillTest {
         show(progress(status = SyncStatus.COMPLETED, feedsDone = 0, feedsTotal = 0, articlesDone = 0), false)
         rule.onNodeWithText("Up to date", useUnmergedTree = true).assertIsDisplayed()
         rule.onNodeWithText("0 / 0 feeds", useUnmergedTree = true).assertDoesNotExist()
+        rule.onNodeWithContentDescription("0 / 0 feeds", substring = true, useUnmergedTree = true)
+            .assertDoesNotExist()
     }
 
     @Test
@@ -92,6 +101,8 @@ class SyncProgressPillTest {
         show(progress(status = SyncStatus.COMPLETED, feedsTotal = 23, articlesDone = 0, articlesTotal = 0), false)
         rule.onNodeWithText("Up to date", useUnmergedTree = true).assertIsDisplayed()
         rule.onNodeWithText("0 articles", useUnmergedTree = true).assertDoesNotExist()
+        rule.onNodeWithContentDescription("0 articles", substring = true, useUnmergedTree = true)
+            .assertDoesNotExist()
     }
 
     @Test
@@ -159,7 +170,7 @@ class SyncProgressPillTest {
             }
         }
         rule.mainClock.advanceTimeBy(1_000)
-        rule.onNodeWithText("4 / 6 feeds", useUnmergedTree = true).assertIsDisplayed()
+        assertPillDescriptionContains("4 / 6 feeds")
 
         rule.runOnUiThread { progressState.value = null }
         rule.mainClock.advanceTimeBy(50)
