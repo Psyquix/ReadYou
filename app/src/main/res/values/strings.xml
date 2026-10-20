@@ -264,6 +264,32 @@
     <string name="add_accounts_desc">Local, services, self-hosted</string>
     <string name="display">Display</string>
     <string name="synchronous">Syncing</string>
+    <string name="sync_up_to_date">Up to date</string>
+    <string name="sync_failed">Sync failed</string>
+    <plurals name="sync_feeds_progress">
+        <item quantity="one">%1$d / %2$d feed</item>
+        <item quantity="other">%1$d / %2$d feeds</item>
+    </plurals>
+    <plurals name="sync_articles_progress">
+        <item quantity="one">%1$d / %2$d article</item>
+        <item quantity="other">%1$d / %2$d articles</item>
+    </plurals>
+    <plurals name="sync_new_articles">
+        <item quantity="one">%1$d new article</item>
+        <item quantity="other">%1$d new articles</item>
+    </plurals>
+    <plurals name="sync_feed_count">
+        <item quantity="one">%1$d feed</item>
+        <item quantity="other">%1$d feeds</item>
+    </plurals>
+    <plurals name="sync_articles_found">
+        <item quantity="one">%1$d article found</item>
+        <item quantity="other">%1$d articles found</item>
+    </plurals>
+    <plurals name="sync_articles_count">
+        <item quantity="one">%1$d article</item>
+        <item quantity="other">%1$d articles</item>
+    </plurals>
     <string name="sync_interval">Sync</string>
     <string name="sync_once_on_start">Sync once on start</string>
     <string name="detailed_sync_indicator">Detailed sync indicator</string>
