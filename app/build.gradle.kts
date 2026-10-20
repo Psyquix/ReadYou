@@ -192,6 +192,7 @@ dependencies {
     implementation(libs.timber)
 
     // Testing
+    testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.junit)
     androidTestImplementation(libs.junit.ext)
     androidTestImplementation(libs.espresso)

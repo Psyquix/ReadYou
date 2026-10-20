@@ -6,6 +6,9 @@ androidGradlePlugin = "8.13.0"
 kotlin = "2.2.0"
 ksp = "2.2.0-2.0.2"
 
+# Coroutines
+coroutines = "1.9.0"
+
 # AboutLibraries
 aboutLibsRelease = "11.1.1"
 
@@ -142,6 +145,7 @@ compose-material3-adaptive-navigation3 = { group = "androidx.compose.material3.a
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
 
 # Testing
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 junit-ext = { group = "androidx.test.ext", name = "junit", version.ref = "junitExt" }
 espresso = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
