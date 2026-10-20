@@ -1,10 +1,11 @@
 package me.ash.reader.ui.page.home.sync
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -84,14 +85,18 @@ fun SyncProgressPill(
         )
     val model = progress?.toPillModel() ?: if (isSyncRunning) fallback else null
 
-    AnimatedVisibility(
-        visible = model != null,
-        enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 2 }),
-        exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 2 }),
+    AnimatedContent(
+        targetState = model,
         modifier = modifier,
-    ) {
-        if (model != null) {
-            PillContent(model = model)
+        transitionSpec = {
+            (fadeIn() + slideInVertically(initialOffsetY = { -it / 2 })) togetherWith
+                (fadeOut() + slideOutVertically(targetOffsetY = { -it / 2 }))
+        },
+        contentKey = { it != null },
+        label = "sync-progress-pill",
+    ) { targetModel ->
+        if (targetModel != null) {
+            PillContent(model = targetModel)
         }
     }
 }
@@ -161,12 +166,12 @@ private fun PillContent(model: SyncPillModel) {
         is SyncPillModel.Completed -> {
             title = stringResource(R.string.sync_up_to_date)
             count = null
-            subtitle = summaryText(model.summary)
+            subtitle = summaryText(model.summary, suppressZeroWork = true)
         }
         is SyncPillModel.Failed -> {
             title = stringResource(R.string.sync_failed)
             count = null
-            subtitle = summaryText(model.summary)
+            subtitle = summaryText(model.summary, suppressZeroWork = false)
         }
     }
 
@@ -213,6 +218,7 @@ private fun PillContent(model: SyncPillModel) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = title,
+                            modifier = Modifier.weight(1f, fill = false),
                             style = MaterialTheme.typography.labelLarge,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -237,68 +243,72 @@ private fun PillContent(model: SyncPillModel) {
                     }
                 }
             }
-            if (model is SyncPillModel.Running || model is SyncPillModel.Completed) {
-                Spacer(modifier = Modifier.height(8.dp))
-                val fraction =
-                    when (model) {
-                        is SyncPillModel.Running -> model.fraction
-                        is SyncPillModel.Completed -> 1f
-                        is SyncPillModel.Failed -> null
-                    }
-                val barColor =
-                    if (isFailed) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.primary
-                if (fraction != null) {
-                    LinearProgressIndicator(
-                        progress = { fraction },
-                        modifier =
-                            Modifier.fillMaxWidth()
-                                .height(3.dp)
-                                .testTag("sync-progress-bar"),
-                        color = barColor,
-                        trackColor = barColor.copy(alpha = 0.2f),
-                    )
-                } else {
-                    LinearProgressIndicator(
-                        modifier =
-                            Modifier.fillMaxWidth()
-                                .height(3.dp)
-                                .testTag("sync-progress-bar"),
-                        color = barColor,
-                        trackColor = barColor.copy(alpha = 0.2f),
-                    )
-                }
+            when (model) {
+                is SyncPillModel.Running -> PillProgressBar(fraction = model.fraction)
+                is SyncPillModel.Completed -> PillProgressBar(fraction = 1f)
+                is SyncPillModel.Failed -> Unit
             }
         }
     }
 }
 
 @Composable
-private fun summaryText(summary: SyncSummary): String? {
+private fun PillProgressBar(fraction: Float?) {
+    Spacer(modifier = Modifier.height(8.dp))
+    val color = MaterialTheme.colorScheme.primary
+    val trackColor = color.copy(alpha = 0.2f)
+    if (fraction != null) {
+        LinearProgressIndicator(
+            progress = { fraction },
+            modifier =
+                Modifier.fillMaxWidth()
+                    .height(3.dp)
+                    .testTag("sync-progress-bar"),
+            color = color,
+            trackColor = trackColor,
+        )
+    } else {
+        LinearProgressIndicator(
+            modifier =
+                Modifier.fillMaxWidth()
+                    .height(3.dp)
+                    .testTag("sync-progress-bar"),
+            color = color,
+            trackColor = trackColor,
+        )
+    }
+}
+
+@Composable
+private fun summaryText(summary: SyncSummary, suppressZeroWork: Boolean): String? {
     val articlesTotal = summary.articlesTotal
     return when {
         articlesTotal != null -> {
-            if (articlesTotal == 0) {
+            if (suppressZeroWork && articlesTotal == 0) {
                 null
             } else {
                 val articles =
                     pluralStringResource(
                         R.plurals.sync_articles_count,
-                        articlesTotal,
-                        articlesTotal,
+                        summary.articlesDone,
+                        summary.articlesDone,
                     )
-                val feedsTotal = summary.feedsTotal ?: summary.feedsDone
-                val feeds =
-                    pluralStringResource(
-                        R.plurals.sync_feed_count,
-                        feedsTotal,
-                        feedsTotal,
-                    )
-                "$articles · $feeds"
+                val feedsTotal = summary.feedsTotal
+                if (feedsTotal == null) {
+                    articles
+                } else {
+                    val feeds =
+                        pluralStringResource(
+                            R.plurals.sync_feed_count,
+                            feedsTotal,
+                            feedsTotal,
+                        )
+                    "$articles · $feeds"
+                }
             }
         }
         summary.feedsTotal != null -> {
-            if (summary.feedsTotal == 0) {
+            if (suppressZeroWork && summary.feedsTotal == 0) {
                 null
             } else {
                 val feeds =
