@@ -1,7 +1,7 @@
 # Fork management (Psyquix/ReadYou)
 
 This fork tracks upstream with three local additions. Everything below is
-designed to survive `track-upstream` merges without manual work.
+designed to survive upstream merges without manual work.
 
 ## What's different from upstream
 
@@ -137,10 +137,10 @@ release-notes footer names the right upstream version.
 
 ## Automation (`.github/workflows/`)
 
-- `track-upstream` (weekly Mondays + manual): merges the latest
-  `Ashinch/ReadYou` release into `main` and pushes (which triggers the stock
-  `Build Commit` APK build). Opens an issue on merge conflict — resolve by
-  hand, keeping both sides where sensible.
+Upstream merges are manual: fetch and merge the desired `Ashinch/ReadYou` tag
+into `main`, keeping `merge upstream` in the merge commit message so a green
+`Build Commit` can publish it.
+
 - `release` publishes `v0.4.0`-style tags with the APK attached, two ways:
   - **automatically** — on green `Build Commit` runs whose head commit contains
     `merge upstream`
@@ -166,7 +166,7 @@ release-notes footer names the right upstream version.
   merge. `release` only fires on a green `Build Commit`, so **unit tests are
   a release precondition**. This matters
   because `testing.yml` is `pull_request`-only and would otherwise never run on
-  an automated upstream merge — a merge that compiles but is semantically wrong
+  an upstream merge — a merge that compiles but is semantically wrong
   would ship. Add a test with every patch; this gate is what runs it.
 - `testing.yml` (upstream file): unchanged, PR-triggered unit tests.
 
@@ -198,8 +198,7 @@ Updates within `0.4.x` install over each other, no data loss.
 ## If upstream moves
 
 Upstream branding already points at `ReadYouApp/ReadYou`. If `Ashinch/ReadYou`
-goes stale, retarget `track-upstream.yml` (remote URL + API repo in the
-`gh api` call) at the new home.
+goes stale, use the new repository URL when fetching and merging upstream.
 
 ## Known rough edges
 
