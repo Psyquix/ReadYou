@@ -48,6 +48,13 @@ import javax.net.ssl.X509KeyManager
 import javax.net.ssl.X509TrustManager
 
 /**
+ * 100 MiB: large enough to retain the ~30 MB compressed feed set and leave headroom for
+ * revalidation and other cached responses. The previous 10 MiB could not hold the feed set,
+ * so unchanged feeds were re-downloaded on every sync.
+ */
+private const val DEFAULT_HTTP_CACHE_SIZE_BYTES = 100L * 1024L * 1024L
+
+/**
  * Provides singleton [OkHttpClient] for the application.
  */
 @Module
@@ -69,7 +76,7 @@ object OkHttpClientModule {
 fun cachingHttpClient(
     context: Context,
     cacheDirectory: File? = null,
-    cacheSize: Long = 10L * 1024L * 1024L,
+    cacheSize: Long = DEFAULT_HTTP_CACHE_SIZE_BYTES,
     trustAllCerts: Boolean = true,
     connectTimeoutSecs: Long = 30L,
     readTimeoutSecs: Long = 30L,
