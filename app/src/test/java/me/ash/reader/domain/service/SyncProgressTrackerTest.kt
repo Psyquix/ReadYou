@@ -124,6 +124,26 @@ class SyncProgressTrackerTest {
     }
 
     @Test
+    fun `negative totals are clamped to zero`() = runTest {
+        val tracker = SyncProgressTracker(this)
+        val session = tracker.start("w1")
+        session.setFeedTotal(-3)
+        assertEquals(0, tracker.state.value!!.feedsTotal)
+        session.setArticleTotal(-5)
+        assertEquals(0, tracker.state.value!!.articlesTotal)
+    }
+
+    @Test
+    fun `stale session cancel does not clear the active session`() = runTest {
+        val tracker = SyncProgressTracker(this)
+        val first = tracker.start("w1")
+        tracker.start("w2")
+        first.cancel()
+        assertEquals("w2", tracker.state.value!!.sessionId)
+        assertEquals(SyncStatus.RUNNING, tracker.state.value!!.status)
+    }
+
+    @Test
     fun `cancel clears immediately`() = runTest {
         val tracker = SyncProgressTracker(this)
         tracker.start("w1").cancel()

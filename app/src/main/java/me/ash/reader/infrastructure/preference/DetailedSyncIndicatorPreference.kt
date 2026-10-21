@@ -35,8 +35,12 @@ sealed class DetailedSyncIndicatorPreference(val value: Boolean) : Preference() 
 
     companion object {
 
-        val default = OFF
-        val values = listOf(ON, OFF)
+        // Computed rather than initialized eagerly: an eager `default = OFF` can run during the
+        // superclass initialization triggered by an `OFF` access, observing `OFF` as null.
+        val default: DetailedSyncIndicatorPreference
+            get() = OFF
+        val values: List<DetailedSyncIndicatorPreference>
+            get() = listOf(ON, OFF)
 
         fun fromPreferences(preferences: Preferences) =
             when (preferences[DataStoreKey.keys[detailedSyncIndicator]?.key as Preferences.Key<Boolean>]) {

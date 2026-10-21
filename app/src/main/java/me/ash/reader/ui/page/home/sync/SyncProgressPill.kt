@@ -341,10 +341,14 @@ private fun PillContent(model: SyncPillModel) {
                     }
                 }
             }
-            when (model) {
-                is SyncPillModel.Running -> PillProgressBar(fraction = model.fraction)
-                is SyncPillModel.Completed -> PillProgressBar(fraction = 1f)
-                is SyncPillModel.Failed -> Unit
+            val barFraction =
+                when (model) {
+                    is SyncPillModel.Running -> model.fraction
+                    is SyncPillModel.Completed -> 1f
+                    is SyncPillModel.Failed -> null
+                }
+            if (model !is SyncPillModel.Failed) {
+                PillProgressBar(fraction = barFraction)
             }
         }
     }
@@ -434,10 +438,14 @@ private fun summaryText(summary: SyncSummary, suppressZeroWork: Boolean): String
             }
         }
         else ->
-            pluralStringResource(
-                R.plurals.sync_articles_found,
-                summary.articlesDone,
-                summary.articlesDone,
-            )
+            if (suppressZeroWork && summary.articlesDone == 0) {
+                null
+            } else {
+                pluralStringResource(
+                    R.plurals.sync_articles_found,
+                    summary.articlesDone,
+                    summary.articlesDone,
+                )
+            }
     }
 }

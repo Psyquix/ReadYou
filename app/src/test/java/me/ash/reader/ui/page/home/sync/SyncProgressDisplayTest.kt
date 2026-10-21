@@ -86,6 +86,56 @@ class SyncProgressDisplayTest {
     }
 
     @Test
+    fun `article counts over the total are clamped`() {
+        val model = progress(articlesDone = 500, articlesTotal = 410).toPillModel()
+            as SyncPillModel.Running
+        assertEquals(410, model.done)
+        assertEquals(410, model.total)
+        assertEquals(1f, model.fraction)
+    }
+
+    @Test
+    fun `article total without feeds uses the none subtitle sentinel`() {
+        val model = progress(articlesDone = 82, articlesTotal = 410).toPillModel()
+            as SyncPillModel.Running
+        assertEquals(SyncSubtitleKind.NONE, model.subtitleKind)
+        assertEquals(0, model.subtitleCount)
+    }
+
+    @Test
+    fun `negative article total is treated as zero without throwing`() {
+        val model = progress(articlesDone = 5, articlesTotal = -1).toPillModel()
+            as SyncPillModel.Running
+        assertEquals(0, model.done)
+        assertEquals(0, model.total)
+        assertEquals(1f, model.fraction)
+    }
+
+    @Test
+    fun `negative feed total is treated as zero without throwing`() {
+        val model = progress(feedsDone = 5, feedsTotal = -1).toPillModel()
+            as SyncPillModel.Running
+        assertEquals(0, model.done)
+        assertEquals(0, model.total)
+        assertEquals(1f, model.fraction)
+    }
+
+    @Test
+    fun `negative counts are clamped in terminal summaries`() {
+        val completed = progress(
+            status = SyncStatus.COMPLETED,
+            feedsDone = -2,
+            feedsTotal = -6,
+            articlesDone = -82,
+            articlesTotal = -410,
+        ).toPillModel() as SyncPillModel.Completed
+        assertEquals(0, completed.summary.feedsDone)
+        assertEquals(0, completed.summary.feedsTotal)
+        assertEquals(0, completed.summary.articlesDone)
+        assertEquals(0, completed.summary.articlesTotal)
+    }
+
+    @Test
     fun `completed and failed preserve the summary`() {
         val completed = progress(status = SyncStatus.COMPLETED, feedsDone = 6, feedsTotal = 6, articlesDone = 82)
             .toPillModel() as SyncPillModel.Completed

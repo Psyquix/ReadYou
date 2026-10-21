@@ -32,48 +32,48 @@ sealed interface SyncPillModel {
 fun SyncProgress.toPillModel(): SyncPillModel {
     val summary =
         SyncSummary(
-            feedsDone = feedsDone,
-            feedsTotal = feedsTotal,
-            articlesDone = articlesDone,
-            articlesTotal = articlesTotal,
+            feedsDone = feedsDone.coerceAtLeast(0),
+            feedsTotal = feedsTotal?.coerceAtLeast(0),
+            articlesDone = articlesDone.coerceAtLeast(0),
+            articlesTotal = articlesTotal?.coerceAtLeast(0),
         )
     return when (status) {
         SyncStatus.COMPLETED -> SyncPillModel.Completed(summary)
         SyncStatus.FAILED -> SyncPillModel.Failed(summary)
-        SyncStatus.RUNNING -> runningModel()
+        SyncStatus.RUNNING -> runningModel(summary)
     }
 }
 
-private fun SyncProgress.runningModel(): SyncPillModel.Running {
-    articlesTotal?.let { total ->
-        val done = articlesDone.coerceIn(0, total)
+private fun runningModel(summary: SyncSummary): SyncPillModel.Running {
+    summary.articlesTotal?.let { total ->
+        val done = summary.articlesDone.coerceIn(0, total)
         return SyncPillModel.Running(
             done = done,
             total = total,
             unit = SyncCountUnit.ARTICLES,
             fraction = fractionOf(done, total),
-            subtitleKind = if (feedsTotal != null) SyncSubtitleKind.FEED_COUNT else SyncSubtitleKind.NONE,
-            subtitleCount = feedsTotal ?: 0,
+            subtitleKind = if (summary.feedsTotal != null) SyncSubtitleKind.FEED_COUNT else SyncSubtitleKind.NONE,
+            subtitleCount = summary.feedsTotal ?: 0,
         )
     }
-    feedsTotal?.let { total ->
-        val done = feedsDone.coerceIn(0, total)
+    summary.feedsTotal?.let { total ->
+        val done = summary.feedsDone.coerceIn(0, total)
         return SyncPillModel.Running(
             done = done,
             total = total,
             unit = SyncCountUnit.FEEDS,
             fraction = fractionOf(done, total),
             subtitleKind = SyncSubtitleKind.NEW_ARTICLES,
-            subtitleCount = articlesDone,
+            subtitleCount = summary.articlesDone,
         )
     }
     return SyncPillModel.Running(
-        done = articlesDone.coerceAtLeast(0),
+        done = summary.articlesDone,
         total = null,
         unit = SyncCountUnit.ARTICLES,
         fraction = null,
         subtitleKind = SyncSubtitleKind.ARTICLES_FOUND,
-        subtitleCount = articlesDone,
+        subtitleCount = summary.articlesDone,
     )
 }
 

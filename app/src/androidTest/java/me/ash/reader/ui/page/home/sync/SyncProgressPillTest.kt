@@ -5,6 +5,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionContains
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -53,6 +57,20 @@ class SyncProgressPillTest {
     }
 
     @Test
+    fun fallbackShowsSyncingWhenRunningWithoutProgress() {
+        show(progress = null, isSyncRunning = true)
+        rule.onNodeWithText("Syncing…", useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithTag("sync-progress-bar", useUnmergedTree = true).assertExists()
+        rule.onNodeWithTag("sync-progress-pill", useUnmergedTree = true)
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.LiveRegion,
+                    LiveRegionMode.Polite,
+                )
+            )
+    }
+
+    @Test
     fun localRunningShowsFeedAndNewArticleCounts() {
         show(progress(feedsDone = 4, feedsTotal = 6, articlesDone = 82), isSyncRunning = true)
         assertPillDescriptionContains("4 / 6 feeds")
@@ -65,6 +83,7 @@ class SyncProgressPillTest {
         show(progress(status = SyncStatus.COMPLETED, feedsDone = 6, feedsTotal = 6, articlesDone = 82), false)
         rule.onNodeWithText("Up to date", useUnmergedTree = true).assertIsDisplayed()
         rule.onNodeWithText("6 / 6 feeds · 82 new articles", useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithTag("sync-progress-bar", useUnmergedTree = true).assertExists()
     }
 
     @Test
@@ -93,6 +112,15 @@ class SyncProgressPillTest {
         rule.onNodeWithText("Up to date", useUnmergedTree = true).assertIsDisplayed()
         rule.onNodeWithText("0 / 0 feeds", useUnmergedTree = true).assertDoesNotExist()
         rule.onNodeWithContentDescription("0 / 0 feeds", substring = true, useUnmergedTree = true)
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun completedUnknownTotalZeroWorkHasNoArticleSubtitle() {
+        show(progress(status = SyncStatus.COMPLETED), false)
+        rule.onNodeWithText("Up to date", useUnmergedTree = true).assertIsDisplayed()
+        rule.onNodeWithText("0 articles found", useUnmergedTree = true).assertDoesNotExist()
+        rule.onNodeWithContentDescription("0 articles found", substring = true, useUnmergedTree = true)
             .assertDoesNotExist()
     }
 

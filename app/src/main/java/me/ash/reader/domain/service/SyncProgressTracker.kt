@@ -87,10 +87,11 @@ constructor(
     }
 
     private inner class Session(private val sessionId: String) : SyncProgressSession {
-        override fun setFeedTotal(total: Int) = update(sessionId) { it.copy(feedsTotal = total) }
+        override fun setFeedTotal(total: Int) =
+            update(sessionId) { it.copy(feedsTotal = total.coerceAtLeast(0)) }
 
         override fun setArticleTotal(total: Int?) =
-            update(sessionId) { it.copy(articlesTotal = total) }
+            update(sessionId) { it.copy(articlesTotal = total?.coerceAtLeast(0)) }
 
         override fun feedCompleted(newArticles: Int) =
             update(sessionId) {
