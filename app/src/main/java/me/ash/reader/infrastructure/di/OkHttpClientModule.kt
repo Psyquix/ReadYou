@@ -33,6 +33,7 @@ import okhttp3.Cache
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Response
+import okhttp3.brotli.BrotliInterceptor
 import okhttp3.internal.platform.Platform
 import java.io.File
 import java.net.Socket
@@ -69,6 +70,7 @@ object OkHttpClientModule {
         context = context,
         cacheDirectory = context.cacheDir.resolve("http")
     ).newBuilder()
+        .addInterceptor(BrotliInterceptor)
         .addNetworkInterceptor(UserAgentInterceptor)
         .build()
 }
