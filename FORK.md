@@ -137,13 +137,22 @@ release-notes footer names the right upstream version.
 
 ## Automation (`.github/workflows/`)
 
-Upstream merges are manual: fetch and merge the desired `Ashinch/ReadYou` tag
-into `main`, keeping `merge upstream` in the merge commit message so a green
-`Build Commit` can publish it.
+Upstream updates are manual:
+
+```sh
+git fetch upstream --tags
+git merge <upstream-tag> -m "merge upstream <upstream-tag>"
+```
+
+Resolve conflicts, bump the fork version as appropriate, and push `main`. Keep
+`merge upstream` in the merge commit message; that marker is what lets the
+release workflow publish automatically after a green `Build Commit`. If you
+merge through the GitHub UI, edit the merge commit message to include it.
 
 - `release` publishes `v0.4.0`-style tags with the APK attached, two ways:
-  - **automatically** — on green `Build Commit` runs whose head commit contains
-    `merge upstream`
+  - **automatically** — a green `Build Commit` from a push to `main` whose
+    commit message contains `merge upstream`. Tags as
+    `vX.Y.Z+psyquix.<release-run-number>`.
   - **manually** — `workflow_dispatch` with a `source_run` input (a Build Commit
     run id). Tags as `vX.Y.Z` and the notes carry the fork changelog plus a
     footer naming the upstream base (`UPSTREAM_BASE` at the top of
@@ -155,7 +164,8 @@ into `main`, keeping `merge upstream` in the merge commit message so a green
     bump patch (`0.8.1`). `versionCode` rises by one every release.
 
   ```sh
-  gh workflow run release.yml -f source_run=<Build Commit run id>
+  gh workflow run release.yml -f source_run=<Build Commit run id> \
+    -f changelog='Changes since vX.Y.Z: ...'
   ```
 - `build_commit.yaml` (upstream file, lightly edited): pinned to
   `ubuntu-24.04` and Node-24-ready actions (`checkout@v4`, `setup-java@v4`,

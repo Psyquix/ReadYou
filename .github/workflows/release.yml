@@ -1,6 +1,6 @@
 name: release
 # Publishes a fork Release with the APK.
-#  - automatically, whenever an upstream merge builds green
+#  - automatically, when a manually merged upstream update builds green
 #  - manually, via workflow_dispatch, from a chosen successful Build Commit run
 on:
   workflow_run:
@@ -25,11 +25,14 @@ env:
   UPSTREAM_BASE: "0.16.2"
 jobs:
   release:
-    # Automatic path: only upstream merges. Manual path: operator's choice, but the
-    # chosen run must have succeeded, so a red build can never be published.
+    # Automatic path: a pushed upstream merge on main whose Build Commit is green.
+    # Manual path: operator's choice, but the chosen run must have succeeded, so a
+    # red build can never be published.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
        contains(github.event.workflow_run.head_commit.message, 'merge upstream'))
     runs-on: ubuntu-latest
     steps:
@@ -94,7 +97,7 @@ jobs:
             Based on upstream ReadYou ${UPSTREAM_BASE} (Ashinch/ReadYou)."
           else
             TAG="v${VER}+psyquix.${{ github.run_number }}"
-            NOTES="Automated build of upstream merge ($SHA).
+            NOTES="Automated release for upstream merge ($SHA).
 
             Fork changelog:
             - Feed icons: the feed's declared image first, then the site homepage icons, then the feed host (upstream uses the feed host only)
@@ -102,6 +105,8 @@ jobs:
             - Mark above/below as unread in the article long-press menu
             - Per-feed article-list scroll memory, restored across restarts
             - New setting: mark as read at end of article instead of on open (both renderers)
+            - Detailed sync indicator with per-feed and article progress
+            - Brotli response support and a larger HTTP cache
 
             Full details in FORK.md.
 
