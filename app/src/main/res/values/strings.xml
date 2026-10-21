@@ -36,6 +36,8 @@
     <string name="refresh">Refresh</string>
     <string name="search">Search</string>
     <string name="searching">Searching…</string>
+    <string name="preparing_feed">Preparing feed…</string>
+    <string name="feed_preparation_failed">Could not prepare feed: %1$s</string>
     <string name="subscribe">Subscribe</string>
     <string name="already_subscribed">Already subscribed</string>
     <string name="clear">Clear</string>

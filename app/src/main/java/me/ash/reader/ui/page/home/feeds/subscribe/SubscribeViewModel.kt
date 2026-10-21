@@ -7,8 +7,11 @@ import com.rometools.rome.feed.synd.SyndFeed
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.InputStream
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +26,7 @@ import me.ash.reader.domain.service.OpmlService
 import me.ash.reader.domain.service.RssService
 import me.ash.reader.infrastructure.android.AndroidStringsHelper
 import me.ash.reader.infrastructure.di.ApplicationScope
+import me.ash.reader.infrastructure.rss.FeedLoadProgress
 import me.ash.reader.infrastructure.rss.RssHelper
 import me.ash.reader.ui.ext.formatUrl
 
@@ -47,8 +51,8 @@ constructor(
 
     val groupsFlow = MutableStateFlow<List<Group>>(emptyList())
 
-    /** Full parsed feed, kept out of compose state (see FeedPreview). */
-    private var fullFeed: SyndFeed? = null
+    /** Full parse runs in the background as soon as the preview is available. */
+    private var fullFeedJob: Deferred<SyndFeed>? = null
 
     init {
         viewModelScope.launch {
@@ -135,6 +139,8 @@ constructor(
     fun searchFeed() {
         val currentState = _subscribeState.value
         if (currentState !is SubscribeState.Idle) return
+        fullFeedJob?.cancel()
+        fullFeedJob = null
         viewModelScope.launch {
             val feedLink = currentState.linkState.text.trim().toString().formatUrl()
             currentState.linkState.edit { this.replace(0, length, feedLink) }
@@ -151,39 +157,100 @@ constructor(
 
             val job =
                 viewModelScope.launch {
-                    runCatching { rssHelper.searchFeed(feedLink) }
-                        .onSuccess {
-                            if (rssService.get().isFeedExist(it.feedLink)) {
-                                _subscribeState.value =
-                                    currentState.copy(
-                                        errorMessage =
-                                            androidStringsHelper.getString(
-                                                R.string.already_subscribed
-                                            )
-                                    )
-                                return@onSuccess
-                            }
-                            val groups = groupsFlow.value
-                            fullFeed = it.feed
+                    try {
+                        val preview = rssHelper.searchFeedPreview(feedLink)
+                        if (rssService.get().isFeedExist(preview.feedLink)) {
                             _subscribeState.value =
-                                SubscribeState.Configure(
-                                    preview = FeedPreview(
-                                        title = it.feed.title,
-                                        iconUrl = it.feed.icon?.url ?: it.feed.icon?.link,
-                                        entryCount = it.feed.entries.size,
-                                    ),
-                                    feedLink = it.feedLink,
-                                    groups = groups,
-                                    selectedGroupId = firstGroupId,
+                                currentState.copy(
+                                    errorMessage =
+                                        androidStringsHelper.getString(
+                                            R.string.already_subscribed
+                                        )
                                 )
+                            return@launch
                         }
-                        .onFailure {
-                            _subscribeState.value = currentState.copy(errorMessage = it.message)
-                        }
+                        _subscribeState.value =
+                            SubscribeState.Configure(
+                                preview =
+                                    FeedPreview(
+                                        title = preview.title,
+                                        iconUrl = preview.iconUrl,
+                                    ),
+                                feedLink = preview.feedLink,
+                                groups = groupsFlow.value,
+                                selectedGroupId = firstGroupId,
+                            )
+                        fullFeedJob = startFullFeedLoad(preview)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        _subscribeState.value = currentState.copy(errorMessage = e.message)
+                    }
                 }
 
             _subscribeState.value =
                 SubscribeState.Fetching(linkState = currentState.linkState, job = job)
+        }
+    }
+
+    private fun startFullFeedLoad(preview: RssHelper.FeedPreviewResult): Deferred<SyndFeed> {
+        fullFeedJob?.cancel()
+        return viewModelScope.async {
+            try {
+                val feed =
+                    rssHelper.loadFeed(preview.feedLink, preview.iconUrl) { progress ->
+                        updateConfigureProgress(preview.feedLink, progress)
+                    }
+                val loadedIcon = feed.icon?.url ?: feed.icon?.link
+                _subscribeState.update { state ->
+                    if (state is SubscribeState.Configure && state.feedLink == preview.feedLink) {
+                        state.copy(
+                            preview =
+                                if (state.preview.iconUrl == null && loadedIcon != null) {
+                                    state.preview.copy(iconUrl = loadedIcon)
+                                } else {
+                                    state.preview
+                                },
+                            isPreparing = false,
+                            progress = 1f,
+                            preparationError = null,
+                        )
+                    } else {
+                        state
+                    }
+                }
+                feed
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _subscribeState.update { state ->
+                    if (state is SubscribeState.Configure && state.feedLink == preview.feedLink) {
+                        state.copy(
+                            isPreparing = false,
+                            progress = null,
+                            preparationError = e.message ?: "Unable to prepare feed",
+                        )
+                    } else {
+                        state
+                    }
+                }
+                throw e
+            }
+        }
+    }
+
+    private fun updateConfigureProgress(feedLink: String, progress: FeedLoadProgress) {
+        // Never show 100% before the parser and feed preparation are complete.
+        val next = progress.fraction?.coerceAtMost(0.99f)
+        _subscribeState.update { state ->
+            if (state !is SubscribeState.Configure || state.feedLink != feedLink) return@update state
+            val changed =
+                when {
+                    next == null -> state.progress != null
+                    state.progress == null -> true
+                    else -> (state.progress * 100).toInt() != (next * 100).toInt()
+                }
+            if (changed) state.copy(progress = next) else state
         }
     }
 
@@ -193,25 +260,76 @@ constructor(
                 it.job.cancel()
             }
         }
+        fullFeedJob?.cancel()
+        fullFeedJob = null
     }
 
     fun subscribe() {
         val state = _subscribeState.value
-        if (state !is SubscribeState.Configure) return
+        if (state !is SubscribeState.Configure || state.isSubscribing) return
+
+        val existingJob = fullFeedJob
+        val job =
+            if (existingJob != null && (existingJob.isActive || state.progress == 1f)) {
+                existingJob
+            } else {
+                _subscribeState.update {
+                    if (it is SubscribeState.Configure && it.feedLink == state.feedLink) {
+                        it.copy(
+                            isPreparing = true,
+                            progress = null,
+                            preparationError = null,
+                        )
+                    } else {
+                        it
+                    }
+                }
+                val preview =
+                    RssHelper.FeedPreviewResult(
+                        title = state.preview.title,
+                        iconUrl = state.preview.iconUrl,
+                        feedLink = state.feedLink,
+                    )
+                startFullFeedLoad(preview).also { fullFeedJob = it }
+            }
+
+        _subscribeState.update {
+            if (it is SubscribeState.Configure && it.feedLink == state.feedLink) {
+                it.copy(isSubscribing = true)
+            } else {
+                it
+            }
+        }
 
         applicationScope.launch {
-            val searchedFeed = fullFeed ?: return@launch
+            val searchedFeed =
+                try {
+                    job.await()
+                } catch (e: CancellationException) {
+                    return@launch
+                } catch (e: Exception) {
+                    _subscribeState.update {
+                        if (it is SubscribeState.Configure && it.feedLink == state.feedLink) {
+                            it.copy(isSubscribing = false)
+                        } else {
+                            it
+                        }
+                    }
+                    return@launch
+                }
+
+            val latest = _subscribeState.value as? SubscribeState.Configure ?: state
             searchedFeed.title =
-                _subscribeUiState.value.newName.ifBlank { state.preview.title }
+                _subscribeUiState.value.newName.ifBlank { latest.preview.title }
             rssService
                 .get()
                 .subscribe(
                     searchedFeed = searchedFeed,
-                    feedLink = state.feedLink,
-                    groupId = state.selectedGroupId,
-                    isNotification = state.notification,
-                    isFullContent = state.fullContent,
-                    isBrowser = state.browser,
+                    feedLink = latest.feedLink,
+                    groupId = latest.selectedGroupId,
+                    isNotification = latest.notification,
+                    isFullContent = latest.fullContent,
+                    isBrowser = latest.browser,
                 )
             hideDrawer()
         }
@@ -231,13 +349,13 @@ constructor(
     }
 
     fun showDrawer() {
+        cancelSearch()
         _subscribeState.value =
             SubscribeState.Idle(importFromOpmlEnabled = rssService.get().importSubscription)
     }
 
     fun hideDrawer() {
         cancelSearch()
-        fullFeed = null
         _subscribeState.value = SubscribeState.Hidden
     }
 
@@ -315,6 +433,10 @@ sealed interface SubscribeState {
         val fullContent: Boolean = false,
         val browser: Boolean = false,
         val selectedGroupId: String,
+        val isPreparing: Boolean = true,
+        val progress: Float? = null,
+        val preparationError: String? = null,
+        val isSubscribing: Boolean = false,
     ) : SubscribeState, Visible
 }
 
@@ -323,5 +445,4 @@ sealed interface SubscribeState {
 data class FeedPreview(
     val title: String,
     val iconUrl: String?,
-    val entryCount: Int,
 )

@@ -4,17 +4,22 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.rounded.RssFeed
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -24,10 +29,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import kotlin.math.roundToInt
 import me.ash.reader.R
 import me.ash.reader.ui.component.FeedIcon
 import me.ash.reader.ui.component.RenameDialog
@@ -134,29 +141,36 @@ fun SubscribeDialog(
                         }
 
                         is SubscribeState.Configure -> {
-                            FeedOptionView(
-                                link = state.feedLink,
-                                groups = state.groups,
-                                selectedAllowNotificationPreset = state.notification,
-                                selectedParseFullContentPreset = state.fullContent,
-                                selectedOpenInBrowserPreset = state.browser,
-                                selectedGroupId = state.selectedGroupId,
-                                allowNotificationPresetOnClick = {
-                                    subscribeViewModel.toggleAllowNotificationPreset()
-                                },
-                                parseFullContentPresetOnClick = {
-                                    subscribeViewModel.toggleParseFullContentPreset()
-                                },
-                                openInBrowserPresetOnClick = {
-                                    subscribeViewModel.toggleOpenInBrowserPreset()
-                                },
-                                onGroupClick = {
-                                    subscribeViewModel.selectedGroup(it)
-                                },
-                                onAddNewGroup = {
-                                    subscribeViewModel.showNewGroupDialog()
-                                },
-                            )
+                            Column {
+                                FeedPreparationProgress(
+                                    isPreparing = state.isPreparing,
+                                    progress = state.progress,
+                                    error = state.preparationError,
+                                )
+                                FeedOptionView(
+                                    link = state.feedLink,
+                                    groups = state.groups,
+                                    selectedAllowNotificationPreset = state.notification,
+                                    selectedParseFullContentPreset = state.fullContent,
+                                    selectedOpenInBrowserPreset = state.browser,
+                                    selectedGroupId = state.selectedGroupId,
+                                    allowNotificationPresetOnClick = {
+                                        subscribeViewModel.toggleAllowNotificationPreset()
+                                    },
+                                    parseFullContentPresetOnClick = {
+                                        subscribeViewModel.toggleParseFullContentPreset()
+                                    },
+                                    openInBrowserPresetOnClick = {
+                                        subscribeViewModel.toggleOpenInBrowserPreset()
+                                    },
+                                    onGroupClick = {
+                                        subscribeViewModel.selectedGroup(it)
+                                    },
+                                    onAddNewGroup = {
+                                        subscribeViewModel.showNewGroupDialog()
+                                    },
+                                )
+                            }
                         }
 
                         SubscribeState.Hidden -> {}
@@ -167,6 +181,7 @@ fun SubscribeDialog(
                 when (subscribeState) {
                     is SubscribeState.Configure -> {
                         TextButton(
+                            enabled = !subscribeState.isSubscribing,
                             onClick = {
                                 focusManager.clearFocus()
                                 subscribeViewModel.subscribe()
@@ -247,6 +262,50 @@ fun SubscribeDialog(
             onConfirm = {
                 subscribeViewModel.addNewGroup()
             }
+        )
+    }
+}
+
+@Composable
+private fun FeedPreparationProgress(
+    isPreparing: Boolean,
+    progress: Float?,
+    error: String?,
+) {
+    if (isPreparing) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+        ) {
+            if (progress == null) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            } else {
+                val animatedProgress =
+                    animateFloatAsState(
+                        targetValue = progress,
+                        animationSpec = tween(durationMillis = 300),
+                        label = "feed-preparation-progress",
+                    )
+                LinearProgressIndicator(
+                    progress = { animatedProgress.value },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            Text(
+                text =
+                    progress?.let { "${(it * 100).roundToInt()}%" }
+                        ?: stringResource(R.string.preparing_feed),
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.End,
+            )
+        }
+    } else if (error != null) {
+        Text(
+            text = stringResource(R.string.feed_preparation_failed, error),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
         )
     }
 }

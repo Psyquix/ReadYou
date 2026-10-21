@@ -12,11 +12,20 @@ import com.rometools.rome.io.SyndFeedInput
 import com.rometools.rome.io.XmlReader
 import java.io.ByteArrayInputStream
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.net.URI
 import java.nio.charset.Charset
 import java.util.*
+import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import me.ash.reader.domain.model.article.Article
 import me.ash.reader.domain.model.feed.Feed
 import me.ash.reader.domain.repository.FeedDao
@@ -46,60 +55,198 @@ constructor(
     private val okHttpClient: OkHttpClient,
 ) {
 
-    data class SearchFeedResult(
-        val feed: SyndFeed,
+    data class FeedPreviewResult(
+        val title: String,
+        val iconUrl: String?,
         val feedLink: String,
     )
 
+    /**
+     * Reads only the feed header and resolves the preview. The full feed is
+     * loaded separately in [loadFeed] so this call stays fast on large feeds.
+     */
     @Throws(Exception::class)
-    suspend fun searchFeed(feedLink: String): SearchFeedResult {
+    suspend fun searchFeedPreview(feedLink: String): FeedPreviewResult {
         return withContext(ioDispatcher) {
             val directResponse = response(okHttpClient, feedLink)
             if (!directResponse.commonIsSuccessful) throw IOException(directResponse.message)
-            val directBody = directResponse.body.bytes()
-            val directHttpContentType = toHttpContentType(directResponse.header("Content-Type"))
+            val directEncoding = charsetName(directResponse.header("Content-Type"))
+            val directMetadata =
+                directResponse.body.byteStream().use { inputStream ->
+                    runCatching { FeedMetadataParser.parse(inputStream, directEncoding) }.getOrNull()
+                }
 
-            val parsedDirectFeed = runCatching { parseFeed(directBody, directHttpContentType) }.getOrNull()
+            val resolvedFeedLink: String
+            val metadata: FeedMetadata
+            if (directMetadata != null) {
+                resolvedFeedLink = feedLink
+                metadata = directMetadata
+            } else {
+                // The body was consumed while checking whether this URL is a
+                // feed. Re-fetch the page so its alternate link can be found.
+                val pageResponse = response(okHttpClient, feedLink)
+                if (!pageResponse.commonIsSuccessful) throw IOException(pageResponse.message)
+                val pageBody = pageResponse.body.bytes()
+                resolvedFeedLink =
+                    discoverFeedLink(feedLink, pageBody)
+                        ?: throw IOException("Unable to detect RSS feed URL")
 
-            val resolvedFeedLink =
-                if (parsedDirectFeed != null) feedLink
-                else discoverFeedLink(feedLink, directBody)
-                    ?: throw IOException("Unable to detect RSS feed URL")
-
-
-            val feed = parsedDirectFeed ?: run {
                 val discoveredResponse = response(okHttpClient, resolvedFeedLink)
                 if (!discoveredResponse.commonIsSuccessful) {
                     throw IOException(discoveredResponse.message)
                 }
-                parseFeed(
-                    discoveredResponse.body.bytes(),
-                    toHttpContentType(discoveredResponse.header("Content-Type")),
-                )
+                metadata =
+                    discoveredResponse.body.byteStream().use { inputStream ->
+                        FeedMetadataParser.parse(
+                            inputStream,
+                            charsetName(discoveredResponse.header("Content-Type")),
+                        )
+                    }
             }
 
-            feed.also {
-                // Prefer the feed-declared <image> icon, then the site homepage
-                // (Twine-style), then the legacy feed-host lookup.
-                val declared = (it.icon?.url ?: it.icon?.link)
-                    ?.takeIf { u -> u.startsWith("http") }
-                val site = it.link?.takeIf { u -> u.startsWith("http") }
-                val resolved = declared
-                    ?: site?.let { BestIconFinder(okHttpClient).findBestIcon(it) }
-                    ?: queryRssIconLink(resolvedFeedLink)
-                it.icon = SyndImageImpl()
-                it.icon.link = resolved
-                it.icon.url = resolved
-            }
+            val title = metadata.title?.takeIf { it.isNotBlank() } ?: resolvedFeedLink
+            val siteLink =
+                metadata.siteLink
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { resolveUrl(resolvedFeedLink, it) }
+            // Only the icon declared in the header is available this early. If
+            // it is missing, the background parse resolves a fallback icon.
+            val iconUrl =
+                metadata.iconUrl
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { resolveUrl(siteLink ?: resolvedFeedLink, it) }
+                    ?.takeIf { it.startsWith("http") }
 
-            SearchFeedResult(feed = feed, feedLink = resolvedFeedLink)
+            FeedPreviewResult(
+                title = title,
+                iconUrl = iconUrl,
+                feedLink = resolvedFeedLink,
+            )
         }
     }
+
+    /**
+     * Streams the complete feed through ROME. [onProgress] reports decompressed
+     * bytes; the total is obtained with an identity HEAD request so it matches
+     * the bytes ROME actually reads.
+     */
+    @Throws(Exception::class)
+    suspend fun loadFeed(
+        feedLink: String,
+        iconUrl: String?,
+        onProgress: (FeedLoadProgress) -> Unit = {},
+    ): SyndFeed =
+        withContext(ioDispatcher) {
+            coroutineScope {
+                val coroutineContext = currentCoroutineContext()
+                // Start the length probe and the feed download together so a
+                // slow HEAD never delays the parse.
+                val headTotal = async { queryUncompressedContentLength(feedLink) }
+                val response = response(okHttpClient, feedLink)
+                if (!response.commonIsSuccessful) throw IOException(response.message)
+                val total = AtomicReference<Long?>(
+                    response.body.contentLength().takeIf {
+                        it > 0 && response.header("Content-Encoding") == null
+                    }
+                )
+                onProgress(FeedLoadProgress(bytesRead = 0, totalBytes = total.get()))
+
+                val countingStream =
+                    CountingInputStream(response.body.byteStream()) { bytesRead ->
+                        if (!coroutineContext.isActive) {
+                            throw CancellationException("Feed load cancelled")
+                        }
+                        onProgress(
+                            FeedLoadProgress(bytesRead = bytesRead, totalBytes = total.get())
+                        )
+                    }
+
+                val headWatcher =
+                    launch {
+                        val length = headTotal.await()
+                        if (length != null) {
+                            total.set(length)
+                            onProgress(
+                                FeedLoadProgress(
+                                    bytesRead = countingStream.count,
+                                    totalBytes = length,
+                                )
+                            )
+                        }
+                    }
+
+                try {
+                    val feed =
+                        countingStream.use { inputStream ->
+                            SyndFeedInput()
+                                .build(
+                                    XmlReader(
+                                        inputStream,
+                                        toHttpContentType(response.header("Content-Type")),
+                                    )
+                                )
+                        }
+
+                    val resolvedIcon =
+                        iconUrl?.takeIf { it.startsWith("http") }
+                            ?: (feed.icon?.url ?: feed.icon?.link)
+                                ?.takeIf { it.startsWith("http") }
+                            ?: feed.link
+                                ?.takeIf { it.startsWith("http") }
+                                ?.let { BestIconFinder(okHttpClient).findBestIcon(it) }
+                            ?: queryRssIconLink(feedLink)
+                    feed.icon = SyndImageImpl()
+                    feed.icon.link = resolvedIcon
+                    feed.icon.url = resolvedIcon
+                    onProgress(FeedLoadProgress(countingStream.count, total.get()))
+                    feed
+                } finally {
+                    headWatcher.cancel()
+                    headTotal.cancel()
+                }
+            }
+        }
+
+    private suspend fun queryUncompressedContentLength(url: String): Long? =
+        withTimeoutOrNull(3_000) {
+            try {
+                val request =
+                    Request.Builder()
+                        .url(url)
+                        .head()
+                        .header("Accept-Encoding", "identity")
+                        .build()
+                okHttpClient.newCall(request).executeAsync().use { response ->
+                    if (response.commonIsSuccessful &&
+                        response.header("Content-Encoding") == null
+                    ) {
+                        response.header("Content-Length")?.toLongOrNull()?.takeIf { it > 0 }
+                    } else {
+                        null
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+        }
+
+    private fun resolveUrl(base: String, value: String): String? =
+        runCatching { URI(base).resolve(value.trim()).toString() }.getOrNull()
 
     private fun toHttpContentType(contentType: String?): String =
         contentType?.let {
             if (it.contains("charset=", ignoreCase = true)) it else "$it; charset=UTF-8"
         } ?: "text/xml; charset=UTF-8"
+
+    private fun charsetName(contentType: String?): String? =
+        contentType
+            ?.substringAfter("charset=", missingDelimiterValue = "")
+            ?.substringBefore(';')
+            ?.trim()
+            ?.removeSurrounding("\"")
+            ?.takeIf { it.isNotBlank() }
 
     private fun parseFeed(body: ByteArray, httpContentType: String): SyndFeed =
         ByteArrayInputStream(body).use { inputStream ->
