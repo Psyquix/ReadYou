@@ -26,7 +26,7 @@ sealed interface SyncPillModel {
 
     data class Completed(val summary: SyncSummary) : SyncPillModel
 
-    data class Failed(val summary: SyncSummary) : SyncPillModel
+    data class Failed(val summary: SyncSummary, val errorMessage: String? = null) : SyncPillModel
 }
 
 fun SyncProgress.toPillModel(): SyncPillModel {
@@ -39,7 +39,7 @@ fun SyncProgress.toPillModel(): SyncPillModel {
         )
     return when (status) {
         SyncStatus.COMPLETED -> SyncPillModel.Completed(summary)
-        SyncStatus.FAILED -> SyncPillModel.Failed(summary)
+        SyncStatus.FAILED -> SyncPillModel.Failed(summary, errorMessage?.takeIf { it.isNotBlank() })
         SyncStatus.RUNNING -> runningModel(summary)
     }
 }

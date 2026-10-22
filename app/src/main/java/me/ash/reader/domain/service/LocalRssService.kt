@@ -29,6 +29,9 @@ import timber.log.Timber
 
 private const val TAG = "LocalRssService"
 
+private class FeedSyncException(feed: Feed, cause: Throwable) :
+    Exception("${feed.name}: ${cause.message ?: cause::class.java.simpleName}", cause)
+
 class LocalRssService
 @Inject
 constructor(
@@ -84,27 +87,33 @@ constructor(
                 .mapIndexed { _, currentFeed ->
                     async(Dispatchers.IO) {
                         semaphore.withPermit {
-                            val archivedArticles =
-                                feedDao
-                                    .queryArchivedArticles(currentFeed.id)
-                                    .map { it.link }
-                                    .toSet()
-                            val fetchedFeed = syncFeed(currentFeed, preDate)
-                            val fetchedArticles =
-                                fetchedFeed.articles.filterNot {
-                                    archivedArticles.contains(it.link)
-                                }
+                            try {
+                                val archivedArticles =
+                                    feedDao
+                                        .queryArchivedArticles(currentFeed.id)
+                                        .map { it.link }
+                                        .toSet()
+                                val fetchedFeed = syncFeed(currentFeed, preDate)
+                                val fetchedArticles =
+                                    fetchedFeed.articles.filterNot {
+                                        archivedArticles.contains(it.link)
+                                    }
 
-                            val newArticles =
-                                articleDao.insertListIfNotExist(
-                                    articles = fetchedArticles,
-                                    feed = currentFeed,
-                                )
-                            progress?.feedCompleted(newArticles.size)
-                            if (currentFeed.isNotification && newArticles.isNotEmpty()) {
-                                notificationHelper.notify(
-                                    fetchedFeed.copy(articles = newArticles, feed = currentFeed)
-                                )
+                                val newArticles =
+                                    articleDao.insertListIfNotExist(
+                                        articles = fetchedArticles,
+                                        feed = currentFeed,
+                                    )
+                                progress?.feedCompleted(newArticles.size)
+                                if (currentFeed.isNotification && newArticles.isNotEmpty()) {
+                                    notificationHelper.notify(
+                                        fetchedFeed.copy(articles = newArticles, feed = currentFeed)
+                                    )
+                                }
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                throw FeedSyncException(currentFeed, e)
                             }
                         }
                     }
@@ -118,13 +127,22 @@ constructor(
             .onFailure {
                 if (it is CancellationException) throw it
                 syncLogger.log(it)
+                progress?.setError(it.message ?: it::class.java.simpleName)
             }
             .getOrNull() ?: ListenableWorker.Result.retry()
     }
 
     private suspend fun syncFeed(feed: Feed, preDate: Date = Date()): FeedWithArticle {
         val articles = rssHelper.queryRssXml(feed, "", preDate)
-        if (feed.icon == null) {
+        // Older versions trusted a declared /favicon.ico even when the site
+        // answers 204 No Content. Re-check only those legacy icons; new
+        // subscriptions already resolve a working icon when they are added.
+        val icon = feed.icon
+        val needsIconRefresh =
+            icon == null ||
+                (icon.substringBefore('?').endsWith("/favicon.ico", ignoreCase = true) &&
+                    !rssHelper.isUsableIcon(icon))
+        if (needsIconRefresh) {
             val iconLink = rssHelper.queryRssIcon(feed.url)
             if (iconLink != null) {
                 rssHelper.saveRssIcon(feedDao, feed, iconLink)

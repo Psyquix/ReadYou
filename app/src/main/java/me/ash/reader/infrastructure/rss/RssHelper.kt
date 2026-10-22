@@ -10,7 +10,6 @@ import com.rometools.rome.feed.synd.SyndFeed
 import com.rometools.rome.feed.synd.SyndImageImpl
 import com.rometools.rome.io.SyndFeedInput
 import com.rometools.rome.io.XmlReader
-import java.io.ByteArrayInputStream
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.net.URI
 import java.nio.charset.Charset
@@ -59,6 +58,7 @@ constructor(
         val title: String,
         val iconUrl: String?,
         val feedLink: String,
+        val siteLink: String? = null,
     )
 
     /**
@@ -121,6 +121,7 @@ constructor(
                 title = title,
                 iconUrl = iconUrl,
                 feedLink = resolvedFeedLink,
+                siteLink = siteLink,
             )
         }
     }
@@ -188,13 +189,12 @@ constructor(
                         }
 
                     val resolvedIcon =
-                        iconUrl?.takeIf { it.startsWith("http") }
-                            ?: (feed.icon?.url ?: feed.icon?.link)
-                                ?.takeIf { it.startsWith("http") }
-                            ?: feed.link
-                                ?.takeIf { it.startsWith("http") }
-                                ?.let { BestIconFinder(okHttpClient).findBestIcon(it) }
-                            ?: queryRssIconLink(feedLink)
+                        resolveIcon(
+                            declaredIcon =
+                                iconUrl ?: (feed.icon?.url ?: feed.icon?.link),
+                            siteLink = feed.link,
+                            feedLink = feedLink,
+                        )
                     feed.icon = SyndImageImpl()
                     feed.icon.link = resolvedIcon
                     feed.icon.url = resolvedIcon
@@ -247,11 +247,6 @@ constructor(
             ?.trim()
             ?.removeSurrounding("\"")
             ?.takeIf { it.isNotBlank() }
-
-    private fun parseFeed(body: ByteArray, httpContentType: String): SyndFeed =
-        ByteArrayInputStream(body).use { inputStream ->
-            SyndFeedInput().build(XmlReader(inputStream, httpContentType))
-        }
 
     private fun discoverFeedLink(pageUrl: String, body: ByteArray): String? {
         val document = Jsoup.parse(String(body, Charsets.UTF_8), pageUrl)
@@ -447,27 +442,65 @@ constructor(
     }
 
     /**
-     * Unified icon resolution, Twine-style: feed-declared <image> first,
-     * then the site homepage's icons, then the legacy feed-host lookup.
-     * This is the only entry point new code should use.
+     * Unified icon resolution, Twine-style: feed-declared <image> first if it
+     * actually returns an image, then the site homepage's icons, then the
+     * legacy feed-host lookup. This is the only entry point new code should use.
      */
     suspend fun queryRssIcon(feedLink: String?): String? {
         if (feedLink.isNullOrEmpty()) return null
-        try {
-            val res = response(okHttpClient, feedLink)
-            if (res.commonIsSuccessful) {
-                val feed = parseFeed(res.body.bytes(), toHttpContentType(res.header("Content-Type")))
-                (feed.image?.url ?: feed.image?.link)
-                    ?.takeIf { it.startsWith("http") }?.let { return it }
-                feed.link?.takeIf { it.startsWith("http") }?.let { site ->
-                    BestIconFinder(okHttpClient).findBestIcon(site)?.let { return it }
-                }
-            }
+        return try {
+            val preview = searchFeedPreview(feedLink)
+            resolveIcon(
+                declaredIcon = preview.iconUrl,
+                siteLink = preview.siteLink,
+                feedLink = preview.feedLink,
+            )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w("RLog", "queryRssIcon: $e")
+            queryRssIconLink(feedLink)
         }
-        return queryRssIconLink(feedLink)
     }
+
+    private suspend fun resolveIcon(
+        declaredIcon: String?,
+        siteLink: String?,
+        feedLink: String,
+    ): String? {
+        val declared = declaredIcon?.takeIf { it.startsWith("http") }
+        if (declared != null && isUsableIcon(declared)) return declared
+
+        val site = siteLink?.takeIf { it.startsWith("http") }
+        return site?.let { BestIconFinder(okHttpClient).findBestIcon(it) }
+            ?: queryRssIconLink(feedLink)
+    }
+
+    /**
+     * Some sites answer /favicon.ico with 204 or an HTML error page. Treat
+     * those as missing so the caller can use the site's real icon instead.
+     */
+    internal suspend fun isUsableIcon(url: String): Boolean =
+        withTimeoutOrNull(3_000) {
+            try {
+                val request = Request.Builder().url(url).head().build()
+                okHttpClient.newCall(request).executeAsync().use { response ->
+                    if (!response.commonIsSuccessful || response.code == 204) {
+                        return@use false
+                    }
+                    val contentType = response.header("Content-Type")?.lowercase(Locale.ROOT)
+                    val contentLength = response.header("Content-Length")?.toLongOrNull()
+                    (contentType == null ||
+                        contentType.startsWith("image/") ||
+                        contentType.contains("octet-stream")) &&
+                        (contentLength == null || contentLength > 0)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                false
+            }
+        } ?: false
 
     suspend fun saveRssIcon(feedDao: FeedDao, feed: Feed, iconLink: String) {
         feedDao.update(feed.copy(icon = iconLink))

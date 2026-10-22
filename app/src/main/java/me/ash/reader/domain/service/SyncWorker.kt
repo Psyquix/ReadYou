@@ -68,7 +68,7 @@ constructor(
             session.cancel()
             throw c
         } catch (t: Throwable) {
-            session.finish(false)
+            session.finish(false, t.message ?: t::class.java.simpleName)
             throw t
         }
     }

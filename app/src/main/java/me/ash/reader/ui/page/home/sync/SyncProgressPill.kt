@@ -146,8 +146,10 @@ private fun PillContent(model: SyncPillModel) {
     val subtitle: String?
     val rawCount: String?
     val rawSubtitle: String?
+    val errorText: String?
     when (model) {
         is SyncPillModel.Running -> {
+            errorText = null
             if (model.total == null) {
                 title = stringResource(R.string.syncing)
                 count = null
@@ -233,6 +235,7 @@ private fun PillContent(model: SyncPillModel) {
             rawCount = null
             subtitle = summaryText(model.summary, suppressZeroWork = true)
             rawSubtitle = subtitle
+            errorText = null
         }
         is SyncPillModel.Failed -> {
             title = stringResource(R.string.sync_failed)
@@ -240,11 +243,12 @@ private fun PillContent(model: SyncPillModel) {
             rawCount = null
             subtitle = summaryText(model.summary, suppressZeroWork = false)
             rawSubtitle = subtitle
+            errorText = model.errorMessage
         }
     }
 
     val hideAnimatedTextSemantics = model is SyncPillModel.Running
-    val contentDescription = listOfNotNull(title, rawCount, rawSubtitle).joinToString(", ")
+    val contentDescription = listOfNotNull(title, rawCount, rawSubtitle, errorText).joinToString(", ")
 
     Surface(
         modifier =
@@ -336,6 +340,14 @@ private fun PillContent(model: SyncPillModel) {
                                 },
                             style = MaterialTheme.typography.labelMedium,
                             maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (errorText != null) {
+                        Text(
+                            text = errorText,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }

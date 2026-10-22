@@ -11,6 +11,7 @@ data class SyncProgress(
     val articlesTotal: Int? = null,
     val startedAt: Long = System.currentTimeMillis(),
     val finishedAt: Long? = null,
+    val errorMessage: String? = null,
 )
 
 interface SyncProgressSession {
@@ -18,6 +19,7 @@ interface SyncProgressSession {
     fun setArticleTotal(total: Int?)
     fun feedCompleted(newArticles: Int)
     fun articleBatchCompleted(count: Int)
-    fun finish(success: Boolean)
+    fun setError(message: String?)
+    fun finish(success: Boolean, message: String? = null)
     fun cancel()
 }

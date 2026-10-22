@@ -649,17 +649,17 @@ interface ArticleDao {
 
     @Query(
         """
-        SELECT * from article 
+        SELECT link from article
         WHERE link in (:linkList)
         AND feedId = :feedId
         AND accountId = :accountId
         """
     )
-    suspend fun queryArticlesByLinks(
+    suspend fun queryArticleLinks(
         linkList: List<String>,
         feedId: String,
         accountId: Int,
-    ): List<Article>
+    ): List<String>
 
     @Query(
         """
@@ -917,12 +917,19 @@ interface ArticleDao {
     suspend fun insertListIfNotExist(articles: List<Article>, feed: Feed): List<Article> {
         if (articles.isEmpty()) return articles
 
-        val existingArticles = queryArticlesByLinks(
-            linkList = articles.map { it.link },
-            feedId = feed.id,
-            accountId = feed.accountId
-        ).associateBy { it.link }
+        // Large feeds can contain thousands of entries. Query links in bounded
+        // chunks: selecting whole articles would load every full article body,
+        // and one unbounded IN (...) can exceed SQLite's variable limit.
+        val existingLinks =
+            articleLinkQueryChunks(articles.map { it.link })
+                .flatMap { queryArticleLinks(it, feed.id, feed.accountId) }
+                .toSet()
 
-        return articles.filterNot { existingArticles.containsKey(it.link) }.also { insertList(it) }
+        return articles.filterNot { it.link in existingLinks }.also { insertList(it) }
     }
 }
+
+internal const val ARTICLE_LINK_QUERY_CHUNK_SIZE = 500
+
+internal fun articleLinkQueryChunks(links: List<String>): List<List<String>> =
+    links.distinct().chunked(ARTICLE_LINK_QUERY_CHUNK_SIZE)

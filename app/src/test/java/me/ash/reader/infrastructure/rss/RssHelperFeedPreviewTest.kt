@@ -22,14 +22,14 @@ class RssHelperFeedPreviewTest {
     private lateinit var server: TestHttpServer
     private lateinit var helper: RssHelper
 
-    private val feedBody =
+    private fun feedBody(siteLink: String, iconUrl: String): ByteArray =
         """
         <?xml version="1.0" encoding="UTF-8"?>
         <rss version="2.0">
           <channel>
             <title>Local Feed</title>
-            <link>https://example.com/</link>
-            <image><url>/icon.png</url></image>
+            <link>$siteLink</link>
+            <image><url>$iconUrl</url></image>
             <item>
               <title>One</title>
               <link>https://example.com/1</link>
@@ -53,9 +53,29 @@ class RssHelperFeedPreviewTest {
             .trimIndent()
             .toByteArray(Charsets.UTF_8)
 
+    private val siteBody =
+        """
+        <html>
+          <head>
+            <link rel="icon" href="/valid-icon.png">
+          </head>
+          <body>Site</body>
+        </html>
+        """
+            .trimIndent()
+            .toByteArray(Charsets.UTF_8)
+
+    private val validIcon = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47)
+
     @Before
     fun setUp() {
-        server = TestHttpServer(feedBody = feedBody, pageBody = pageBody)
+        server =
+            TestHttpServer(
+                feedBody = feedBody("https://example.com/", "/icon.png"),
+                pageBody = pageBody,
+                siteBody = siteBody,
+                validIcon = validIcon,
+            )
         helper = RssHelper(mock<Context>(), Dispatchers.IO, OkHttpClient())
     }
 
@@ -88,12 +108,12 @@ class RssHelperFeedPreviewTest {
         val feed =
             helper.loadFeed(
                 feedLink = url("/feed.xml"),
-                iconUrl = "https://example.com/icon.png",
+                iconUrl = url("/valid-icon.png"),
             ) { progress += it }
 
         assertEquals("Local Feed", feed.title)
-        assertEquals(feedBody.size.toLong(), progress.last().bytesRead)
-        assertEquals(feedBody.size.toLong(), progress.last().totalBytes)
+        assertEquals(server.feedBody.size.toLong(), progress.last().bytesRead)
+        assertEquals(server.feedBody.size.toLong(), progress.last().totalBytes)
         assertEquals(1f, progress.last().fraction)
         assertTrue(progress.zipWithNext().all { (a, b) -> b.bytesRead >= a.bytesRead })
     }
@@ -104,20 +124,39 @@ class RssHelperFeedPreviewTest {
         val feed =
             helper.loadFeed(
                 feedLink = url("/feed-gzip"),
-                iconUrl = "https://example.com/icon.png",
+                iconUrl = url("/valid-icon.png"),
             ) { progress += it }
 
         assertEquals("Local Feed", feed.title)
-        assertEquals(feedBody.size.toLong(), progress.last().bytesRead)
-        assertEquals(feedBody.size.toLong(), progress.last().totalBytes)
+        assertEquals(server.feedBody.size.toLong(), progress.last().bytesRead)
+        assertEquals(server.feedBody.size.toLong(), progress.last().totalBytes)
         assertEquals(1f, progress.last().fraction)
+    }
+
+    @Test
+    fun `an empty declared icon falls back to the site icon`() = runBlocking {
+        server.feedBody =
+            feedBody(
+                siteLink = url("/site.html"),
+                iconUrl = url("/bad-icon.ico"),
+            )
+
+        val feed =
+            helper.loadFeed(
+                feedLink = url("/feed.xml"),
+                iconUrl = url("/bad-icon.ico"),
+            )
+
+        assertEquals(url("/valid-icon.png"), feed.icon?.url)
     }
 
     private fun url(path: String): String = "http://127.0.0.1:${server.port}$path"
 
     private class TestHttpServer(
-        private val feedBody: ByteArray,
+        var feedBody: ByteArray,
         private val pageBody: ByteArray,
+        private val siteBody: ByteArray,
+        private val validIcon: ByteArray,
     ) {
         private val serverSocket =
             ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))
@@ -180,6 +219,12 @@ class RssHelperFeedPreviewTest {
 
                     "/page.html" ->
                         Response(200, "OK", "text/html; charset=UTF-8", pageBody)
+                    "/site.html" ->
+                        Response(200, "OK", "text/html; charset=UTF-8", siteBody)
+                    "/valid-icon.png" ->
+                        Response(200, "OK", "image/png", validIcon)
+                    "/bad-icon.ico" ->
+                        Response(204, "No Content", "image/png", ByteArray(0))
                     else -> Response(404, "Not Found", "text/plain", ByteArray(0))
                 }
 

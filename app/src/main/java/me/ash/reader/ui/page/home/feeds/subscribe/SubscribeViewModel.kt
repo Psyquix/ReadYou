@@ -206,7 +206,7 @@ constructor(
                     if (state is SubscribeState.Configure && state.feedLink == preview.feedLink) {
                         state.copy(
                             preview =
-                                if (state.preview.iconUrl == null && loadedIcon != null) {
+                                if (loadedIcon != null && loadedIcon != state.preview.iconUrl) {
                                     state.preview.copy(iconUrl = loadedIcon)
                                 } else {
                                     state.preview

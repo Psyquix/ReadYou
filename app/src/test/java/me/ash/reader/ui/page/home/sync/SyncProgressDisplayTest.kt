@@ -14,6 +14,7 @@ class SyncProgressDisplayTest {
         feedsTotal: Int? = null,
         articlesDone: Int = 0,
         articlesTotal: Int? = null,
+        errorMessage: String? = null,
     ) = SyncProgress(
         sessionId = "test",
         status = status,
@@ -21,6 +22,7 @@ class SyncProgressDisplayTest {
         feedsTotal = feedsTotal,
         articlesDone = articlesDone,
         articlesTotal = articlesTotal,
+        errorMessage = errorMessage,
     )
 
     @Test
@@ -143,5 +145,18 @@ class SyncProgressDisplayTest {
         val failed = progress(status = SyncStatus.FAILED, feedsDone = 4, feedsTotal = 6)
             .toPillModel() as SyncPillModel.Failed
         assertEquals(4, failed.summary.feedsDone)
+    }
+
+    @Test
+    fun `failed preserves the error message`() {
+        val failed =
+            progress(
+                status = SyncStatus.FAILED,
+                feedsDone = 5,
+                feedsTotal = 6,
+                errorMessage = "PLIC: too many SQL variables",
+            ).toPillModel() as SyncPillModel.Failed
+
+        assertEquals("PLIC: too many SQL variables", failed.errorMessage)
     }
 }

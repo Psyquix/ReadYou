@@ -149,4 +149,34 @@ class SyncProgressTrackerTest {
         tracker.start("w1").cancel()
         assertNull(tracker.state.value)
     }
+
+    @Test
+    fun `failure carries the error message`() = runTest {
+        val tracker = SyncProgressTracker(this)
+        tracker.start("w1").finish(false, "too many SQL variables")
+
+        assertEquals(SyncStatus.FAILED, tracker.state.value!!.status)
+        assertEquals("too many SQL variables", tracker.state.value!!.errorMessage)
+    }
+
+    @Test
+    fun `error set before a retry result is preserved`() = runTest {
+        val tracker = SyncProgressTracker(this)
+        val session = tracker.start("w1")
+        session.setError("PLIC: OutOfMemoryError")
+        session.finish(false)
+
+        assertEquals("PLIC: OutOfMemoryError", tracker.state.value!!.errorMessage)
+    }
+
+    @Test
+    fun `completion clears a previous error`() = runTest {
+        val tracker = SyncProgressTracker(this)
+        val session = tracker.start("w1")
+        session.setError("temporary")
+        session.finish(true)
+
+        assertEquals(SyncStatus.COMPLETED, tracker.state.value!!.status)
+        assertNull(tracker.state.value!!.errorMessage)
+    }
 }

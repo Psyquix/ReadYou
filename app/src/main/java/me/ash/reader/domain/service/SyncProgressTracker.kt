@@ -50,7 +50,7 @@ constructor(
         }
     }
 
-    private fun complete(sessionId: String, success: Boolean) {
+    private fun complete(sessionId: String, success: Boolean, message: String?) {
         synchronized(lock) {
             val current = _state.value ?: return
             if (activeSessionId != sessionId || current.sessionId != sessionId) return
@@ -60,6 +60,7 @@ constructor(
                 current.copy(
                     status = if (success) SyncStatus.COMPLETED else SyncStatus.FAILED,
                     finishedAt = System.currentTimeMillis(),
+                    errorMessage = if (success) null else message ?: current.errorMessage,
                 )
 
             val holdMillis = if (success) COMPLETED_HOLD_MILLIS else FAILED_HOLD_MILLIS
@@ -104,7 +105,11 @@ constructor(
         override fun articleBatchCompleted(count: Int) =
             update(sessionId) { it.copy(articlesDone = it.articlesDone + count.coerceAtLeast(0)) }
 
-        override fun finish(success: Boolean) = complete(sessionId, success)
+        override fun setError(message: String?) =
+            update(sessionId) { it.copy(errorMessage = message?.takeIf { m -> m.isNotBlank() }) }
+
+        override fun finish(success: Boolean, message: String?) =
+            complete(sessionId, success, message)
 
         override fun cancel() = cancel(sessionId)
     }
